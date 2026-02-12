@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo, Suspense } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useGLTF } from '@react-three/drei'
+import * as THREE from 'three'
 
 const skills = [
     'Android (Kotlin)', 'React', 'Three.js', 'Node.js', 'Flutter',
@@ -12,6 +15,53 @@ const stats = [
     { number: '2', label: 'F-Droid Apps' },
     { number: '∞', label: 'Curiosity' },
 ]
+
+/* ============ 3D FACE MODEL (rotating background) ============ */
+function FaceBackground() {
+    const { scene } = useGLTF('/models/hitem3d.glb')
+    const groupRef = useRef()
+    const clonedScene = useMemo(() => {
+        const c = scene.clone(true)
+        c.traverse((child) => {
+            if (child.isMesh && child.material) {
+                child.material = child.material.clone()
+                child.material.transparent = true
+                child.material.opacity = 0.15
+                child.material.depthWrite = false
+            }
+        })
+        return c
+    }, [scene])
+
+    useFrame((state) => {
+        if (groupRef.current) {
+            groupRef.current.rotation.y += 0.003
+            groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.05
+            groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.1
+        }
+    })
+
+    return (
+        <group ref={groupRef} position={[0, 0, 0]}>
+            <primitive object={clonedScene} scale={3.0} />
+        </group>
+    )
+}
+
+function FaceFallback() {
+    const ref = useRef()
+    useFrame((state) => {
+        if (ref.current) {
+            ref.current.rotation.y = state.clock.elapsedTime * 0.2
+        }
+    })
+    return (
+        <mesh ref={ref}>
+            <icosahedronGeometry args={[1.5, 2]} />
+            <meshBasicMaterial color="#fabd2f" wireframe transparent opacity={0.05} />
+        </mesh>
+    )
+}
 
 export default function About() {
     const sectionRef = useRef()
@@ -32,6 +82,18 @@ export default function About() {
 
     return (
         <section className="section" id="about" ref={sectionRef}>
+            {/* 3D face rotating in the background */}
+            <div className="about-canvas">
+                <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 1.5]}>
+                    <ambientLight intensity={0.3} />
+                    <directionalLight position={[3, 3, 5]} intensity={0.8} color="#ffffff" />
+                    <pointLight position={[-3, -2, 4]} intensity={0.3} color="#fabd2f" />
+                    <Suspense fallback={<FaceFallback />}>
+                        <FaceBackground />
+                    </Suspense>
+                </Canvas>
+            </div>
+
             <div className="section-header reveal">
                 <p className="section-label">About</p>
                 <h2 className="section-title">Who I Am</h2>
@@ -76,3 +138,5 @@ export default function About() {
         </section>
     )
 }
+
+useGLTF.preload('/models/hitem3d.glb')

@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useState, Suspense } from 'react'
 import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
-import { Stars, useGLTF, shaderMaterial } from '@react-three/drei'
+import { Stars, useGLTF, shaderMaterial, Float } from '@react-three/drei'
 import * as THREE from 'three'
 
 /* ============ OVERLAY SHADER MATERIALS ============ */
@@ -285,77 +285,303 @@ function CameraController({ scrollProgress }) {
   return null
 }
 
+/* ============ CUSTOM CAR METALLIC SHADER ============ */
+const CarMetallicMaterial = shaderMaterial(
+  { uTime: 0, uLightPos: new THREE.Vector3(5, 3, 5) },
+  // vertex
+  `varying vec3 vNormal; varying vec3 vPosition; varying vec3 vWorldPos; varying vec3 vViewDir;
+   void main() {
+     vNormal = normalize(normalMatrix * normal);
+     vPosition = position;
+     vec4 wp = modelMatrix * vec4(position, 1.0);
+     vWorldPos = wp.xyz;
+     vViewDir = normalize(cameraPosition - wp.xyz);
+     gl_Position = projectionMatrix * viewMatrix * wp;
+   }`,
+  // fragment
+  `uniform float uTime; uniform vec3 uLightPos;
+   varying vec3 vNormal; varying vec3 vPosition; varying vec3 vWorldPos; varying vec3 vViewDir;
+   void main() {
+     vec3 n = normalize(vNormal);
+     vec3 v = normalize(vViewDir);
+     vec3 l = normalize(uLightPos - vWorldPos);
+     vec3 h = normalize(l + v);
+
+     // Fresnel rim
+     float fresnel = pow(1.0 - max(dot(n, v), 0.0), 4.0);
+
+     // Anisotropic-like specular
+     float spec1 = pow(max(dot(n, h), 0.0), 80.0);
+     float spec2 = pow(max(dot(n, h), 0.0), 20.0);
+
+     // Diffuse
+     float diff = max(dot(n, l), 0.0);
+
+     // Animated color shift on reflection
+     float shift = sin(uTime * 0.8 + vPosition.y * 2.0) * 0.5 + 0.5;
+     vec3 metalColor = mix(
+       vec3(0.85, 0.65, 0.15),  // warm gold
+       vec3(0.9, 0.4, 0.3),     // warm coral
+       shift * 0.4
+     );
+
+     // Dark chrome base
+     vec3 base = vec3(0.04, 0.04, 0.05) + diff * metalColor * 0.3;
+
+     // Sharp specular highlights
+     vec3 specColor = vec3(1.0, 0.92, 0.7) * spec1 * 2.0
+                    + metalColor * spec2 * 0.6;
+
+     // Warm fresnel rim glow
+     vec3 rimColor = mix(vec3(0.98, 0.74, 0.18), vec3(0.98, 0.42, 0.42), fresnel) * fresnel * 0.6;
+
+     // Environment reflection fake
+     vec3 envReflect = metalColor * fresnel * 0.4 + vec3(0.15, 0.12, 0.08) * (1.0 - fresnel);
+
+     vec3 finalColor = base + specColor + rimColor + envReflect;
+     gl_FragColor = vec4(finalColor, 1.0);
+   }`
+)
+
+extend({ CarMetallicMaterial })
+
 /* ============ RACING CAR MODEL (visible in all chapters) ============ */
 function RacingCarModel({ scrollProgress }) {
   const { scene } = useGLTF('/models/car.glb')
   const carRef = useRef()
-  const clonedScene = useMemo(() => {
-    const clone = scene.clone(true)
-    const chromeMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color('#c0c0c0'),
-      metalness: 0.95,
-      roughness: 0.08,
-      emissive: new THREE.Color('#fabd2f'),
-      emissiveIntensity: 0.15,
-      envMapIntensity: 2.0,
-    })
-    clone.traverse((child) => {
-      if (child.isMesh) child.material = chromeMat
-    })
-    return clone
-  }, [scene])
+  const carShaderRef = useRef()
+  const clonedScene = useMemo(() => scene.clone(true), [scene])
+
+  // Smooth lerp helper
+  const lerp = (a, b, t) => a + (b - a) * t
 
   useFrame((state) => {
     if (!carRef.current) return
     const t = state.clock.elapsedTime
-    const stage = scrollProgress * 4 // 0=ChI, 1=ChII, 2=ChIII, 3=ChIV
+    const stage = scrollProgress * 4
+
+    // Update shader time
+    if (carShaderRef.current) {
+      carShaderRef.current.uTime = t
+      // Apply shader to all meshes
+      clonedScene.traverse((child) => {
+        if (child.isMesh) {
+          child.material = carShaderRef.current
+          child.material.side = THREE.DoubleSide
+        }
+      })
+    }
 
     carRef.current.visible = true
-    const s = 0.5
-    carRef.current.scale.set(s, s, s)
+
+    // Calculate target position/rotation per stage
+    let tx, ty, tz, ry, rz, rx
 
     if (stage < 1) {
-      // Chapter I: orbit right side, higher up
-      const angle = t * 0.3
-      carRef.current.position.x = Math.cos(angle) * 6.5
-      carRef.current.position.z = Math.sin(angle) * 6.5
-      carRef.current.position.y = 2.0 + Math.sin(t * 0.6) * 0.2
-      carRef.current.rotation.y = -angle - Math.PI / 2
-      carRef.current.rotation.z = -0.12
-      carRef.current.rotation.x = 0
+      // Chapter I: slow orbit right side, fixed facing
+      const angle = t * 0.12
+      tx = Math.cos(angle) * 6.5
+      tz = Math.sin(angle) * 6.5
+      ty = 2.0 + Math.sin(t * 0.3) * 0.1
+      ry = -1.2   // fixed facing
+      rz = -0.08
+      rx = 0
     } else if (stage < 2) {
-      // Chapter II: parked lower-left, gently floating
-      const targetX = -5.5
-      const targetZ = 3.0
-      const targetY = -1.5 + Math.sin(t * 0.5) * 0.15
-      carRef.current.position.x += (targetX - carRef.current.position.x) * 0.04
-      carRef.current.position.z += (targetZ - carRef.current.position.z) * 0.04
-      carRef.current.position.y += (targetY - carRef.current.position.y) * 0.04
-      carRef.current.rotation.y += (0.8 - carRef.current.rotation.y) * 0.04
-      carRef.current.rotation.z += (0.1 - carRef.current.rotation.z) * 0.04
-      carRef.current.rotation.x = Math.sin(t * 0.3) * 0.02
+      // Chapter II: parked lower-left, fixed facing
+      tx = -5.5
+      tz = 3.0
+      ty = -1.5 + Math.sin(t * 0.25) * 0.1
+      ry = 0.8    // fixed facing
+      rz = 0.06
+      rx = 0
     } else if (stage < 3) {
-      // Chapter III: sweeping arc top-right
-      const angle = t * 0.25 + Math.PI * 0.5
-      carRef.current.position.x = Math.cos(angle) * 5.5
-      carRef.current.position.z = Math.sin(angle) * 4.0
-      carRef.current.position.y = 3.0 + Math.sin(t * 0.7) * 0.3
-      carRef.current.rotation.y = -angle - Math.PI / 2
-      carRef.current.rotation.z = 0.15
-      carRef.current.rotation.x = Math.sin(t * 0.5) * 0.05
+      // Chapter III: slow arc top-right, fixed facing
+      const angle = t * 0.1 + Math.PI * 0.5
+      tx = Math.cos(angle) * 5.5
+      tz = Math.sin(angle) * 4.0
+      ty = 3.0 + Math.sin(t * 0.35) * 0.15
+      ry = -0.5   // fixed facing
+      rz = 0.1
+      rx = 0
     } else {
-      // Chapter IV: slow flyby close to camera
-      const angle = t * 0.15 + Math.PI
-      carRef.current.position.x = Math.cos(angle) * 4.5
-      carRef.current.position.z = Math.sin(angle) * 4.5 + 2.0
-      carRef.current.position.y = 0.5 + Math.sin(t * 0.4) * 0.1
-      carRef.current.rotation.y = -angle - Math.PI / 2
-      carRef.current.rotation.z = -0.08
-      carRef.current.rotation.x = 0
+      // Chapter IV: slow flyby, fixed facing
+      const angle = t * 0.08 + Math.PI
+      tx = Math.cos(angle) * 4.5
+      tz = Math.sin(angle) * 4.5 + 2.0
+      ty = 0.5 + Math.sin(t * 0.2) * 0.05
+      ry = -2.0   // fixed facing toward camera
+      rz = -0.05
+      rx = 0
+    }
+
+    // Smooth lerp all transforms — higher factor = faster settle
+    const L = 0.06
+    carRef.current.position.x = lerp(carRef.current.position.x, tx, L)
+    carRef.current.position.y = lerp(carRef.current.position.y, ty, L)
+    carRef.current.position.z = lerp(carRef.current.position.z, tz, L)
+    carRef.current.rotation.x = lerp(carRef.current.rotation.x, rx, L)
+    carRef.current.rotation.y = lerp(carRef.current.rotation.y, ry, L)
+    carRef.current.rotation.z = lerp(carRef.current.rotation.z, rz, L)
+
+    const s = 0.5
+    carRef.current.scale.x = lerp(carRef.current.scale.x, s, L)
+    carRef.current.scale.y = lerp(carRef.current.scale.y, s, L)
+    carRef.current.scale.z = lerp(carRef.current.scale.z, s, L)
+  })
+
+  return (
+    <group>
+      <carMetallicMaterial ref={carShaderRef} />
+      <primitive ref={carRef} object={clonedScene} scale={0.5} />
+    </group>
+  )
+}
+
+/* ============ CLASS 12th BOOKS (Chapter II asset) ============ */
+function Class12Books({ scrollProgress }) {
+  const csBook = useGLTF('/models/book_cs.glb')
+  const physicsBook = useGLTF('/models/book_physics.glb')
+  const mathBook = useGLTF('/models/book_math.glb')
+  const chemBook = useGLTF('/models/book_chemistry.glb')
+
+  const groupRef = useRef()
+
+  useFrame((state) => {
+    if (!groupRef.current) return
+    const t = state.clock.elapsedTime
+
+    // Visibility: appear only during Chapter II (0.25 - 0.5)
+    // Fade in: 0.2-0.25, Visible: 0.25-0.45, Fade out: 0.45-0.5
+    const visibility = scrollProgress < 0.2 ? 0
+      : scrollProgress < 0.25 ? (scrollProgress - 0.2) / 0.05
+        : scrollProgress < 0.45 ? 1.0
+          : scrollProgress < 0.5 ? 1.0 - (scrollProgress - 0.45) / 0.05
+            : 0
+
+    groupRef.current.visible = visibility > 0.01
+
+    if (groupRef.current.visible) {
+      // Gentle floating animation for the whole group
+      groupRef.current.rotation.y = t * 0.1
+      groupRef.current.position.y = Math.sin(t * 0.5) * 0.2
+
+      // Scale with fade
+      const s = 0.8 * visibility
+      groupRef.current.scale.set(s, s, s)
     }
   })
 
-  return <primitive ref={carRef} object={clonedScene} scale={0.5} />
+  return (
+    <group ref={groupRef} position={[0, 0, 0]}>
+      {/* Computer Science - Top Right */}
+      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+        <primitive
+          object={csBook.scene}
+          position={[3.5, 2, 0]}
+          scale={0.5}
+          rotation={[0.5, -0.5, 0]}
+        />
+      </Float>
+
+      {/* Physics - Bottom Left */}
+      <Float speed={2.5} rotationIntensity={0.6} floatIntensity={0.6}>
+        <primitive
+          object={physicsBook.scene}
+          position={[-3.5, -2, 1]}
+          scale={0.5}
+          rotation={[-0.2, 0.5, 0.2]}
+        />
+      </Float>
+
+      {/* Math - Top Left */}
+      <Float speed={3} rotationIntensity={0.4} floatIntensity={0.7}>
+        <primitive
+          object={mathBook.scene}
+          position={[-3, 2.5, -1]}
+          scale={0.5}
+          rotation={[0.3, 0.8, -0.1]}
+        />
+      </Float>
+
+      {/* Chemistry - Bottom Right */}
+      <Float speed={2.2} rotationIntensity={0.7} floatIntensity={0.5}>
+        <primitive
+          object={chemBook.scene}
+          position={[3, -1.5, -1]}
+          scale={0.5}
+          rotation={[-0.4, -0.3, 0.1]}
+        />
+      </Float>
+    </group>
+  )
+}
+
+/* ============ PROJECT MODELS (spread across all chapters) ============ */
+const PROJECT_MODELS = [
+  // Chapter I — Games
+  { path: '/models/BasketballCourt.glb', pos: [-6, 3, -6], scale: 0.04, chapter: 0, rotSpeed: 0.003 },
+  { path: '/models/Cone.glb', pos: [6, -2.5, -6], scale: 0.04, chapter: 0, rotSpeed: 0.005 },
+  // Chapter II — Apps
+  { path: '/models/TeacherChair.glb', pos: [-5.5, -1.5, -5], scale: 0.02, chapter: 1, rotSpeed: 0.004 },
+  { path: '/models/WesternToilet.glb', pos: [5.5, 1.5, -5], scale: 0.06, chapter: 1, rotSpeed: 0.003 },
+  // Chapter III — Open Source
+  { path: '/models/PlanetBuilding.glb', pos: [5.5, 3, -6], scale: 0.02, chapter: 2, rotSpeed: 0.002 },
+  { path: '/models/PlanetInsideStation.glb', pos: [-5.5, -2, -5], scale: 0.03, chapter: 2, rotSpeed: 0.004 },
+  // Chapter IV — Welcome
+  { path: '/models/CuboidLight.glb', pos: [5, 0.5, -5], scale: 0.08, chapter: 3, rotSpeed: 0.005 },
+]
+
+function SingleProjectModel({ config, scrollProgress }) {
+  const { scene } = useGLTF(config.path)
+  const ref = useRef()
+  const cloned = useMemo(() => scene.clone(true), [scene])
+
+  useFrame((state) => {
+    if (!ref.current) return
+    const t = state.clock.elapsedTime
+    const stage = scrollProgress * 4
+    const ch = config.chapter
+
+    // Each chapter occupies stage [ch, ch+1)
+    // Fade in: ch-0.1 to ch+0.1, visible: ch+0.1 to ch+0.85, fade out: ch+0.85 to ch+1.05
+    let vis = 0
+    if (stage >= ch - 0.1 && stage < ch + 0.1) vis = (stage - (ch - 0.1)) / 0.2
+    else if (stage >= ch + 0.1 && stage < ch + 0.85) vis = 1.0
+    else if (stage >= ch + 0.85 && stage < ch + 1.05) vis = 1.0 - (stage - (ch + 0.85)) / 0.2
+
+    vis = Math.max(0, Math.min(1, vis))
+    ref.current.visible = vis > 0.01
+
+    if (ref.current.visible) {
+      const s = config.scale * vis
+      ref.current.scale.set(s, s, s)
+      ref.current.rotation.y += config.rotSpeed
+      ref.current.position.y = config.pos[1] + Math.sin(t * 0.4 + ch) * 0.15
+
+      cloned.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material.transparent = true
+          child.material.opacity = vis
+        }
+      })
+    }
+  })
+
+  return (
+    <group ref={ref} position={config.pos}>
+      <primitive object={cloned} />
+    </group>
+  )
+}
+
+function ProjectModels({ scrollProgress }) {
+  return (
+    <>
+      {PROJECT_MODELS.map((cfg, i) => (
+        <SingleProjectModel key={i} config={cfg} scrollProgress={scrollProgress} />
+      ))}
+    </>
+  )
 }
 
 /* ============ MAIN SCENE ============ */
@@ -372,6 +598,8 @@ function Scene({ scrollProgress }) {
       <Suspense fallback={<LoadingFallback />}>
         <AsteroidModel scrollProgress={scrollProgress} />
         <RacingCarModel scrollProgress={scrollProgress} />
+        <Class12Books scrollProgress={scrollProgress} />
+        <ProjectModels scrollProgress={scrollProgress} />
       </Suspense>
       <OrbitRing radius={5} tilt={2.5} scrollProgress={scrollProgress} />
       <OrbitRing radius={6} tilt={3.5} scrollProgress={scrollProgress} />
@@ -477,3 +705,8 @@ export default function IntroScene({ onComplete }) {
 
 useGLTF.preload('/models/earth.glb')
 useGLTF.preload('/models/car.glb')
+useGLTF.preload('/models/book_cs.glb')
+useGLTF.preload('/models/book_physics.glb')
+useGLTF.preload('/models/book_math.glb')
+useGLTF.preload('/models/book_chemistry.glb')
+PROJECT_MODELS.forEach(m => useGLTF.preload(m.path))

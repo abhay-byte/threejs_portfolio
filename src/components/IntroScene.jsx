@@ -522,11 +522,11 @@ const PROJECT_MODELS = [
   { path: '/models/BasketballCourt.glb', pos: [-6, 3, -6], scale: 0.04, chapter: 0, rotSpeed: 0.003 },
   { path: '/models/Cone.glb', pos: [6, -2.5, -6], scale: 0.04, chapter: 0, rotSpeed: 0.005 },
   // Chapter II — Apps
-  { path: '/models/TeacherChair.glb', pos: [-5.5, -1.5, -5], scale: 0.02, chapter: 1, rotSpeed: 0.004 },
+  { path: '/models/TeacherChair.glb', pos: [-6, -1.5, -6], scale: 0.01, chapter: 1, rotSpeed: 0.004 },
   { path: '/models/WesternToilet.glb', pos: [5.5, 1.5, -5], scale: 0.06, chapter: 1, rotSpeed: 0.003 },
   // Chapter III — Open Source
-  { path: '/models/PlanetBuilding.glb', pos: [5.5, 3, -6], scale: 0.02, chapter: 2, rotSpeed: 0.002 },
-  { path: '/models/PlanetInsideStation.glb', pos: [-5.5, -2, -5], scale: 0.03, chapter: 2, rotSpeed: 0.004 },
+  { path: '/models/PlanetBuilding.glb', pos: [8, 4, -12], scale: 0.0005, chapter: 2, rotSpeed: 0.002 },
+  { path: '/models/PlanetInsideStation.glb', pos: [-8, -3, -12], scale: 0.0005, chapter: 2, rotSpeed: 0.004 },
   // Chapter IV — Welcome
   { path: '/models/CuboidLight.glb', pos: [5, 0.5, -5], scale: 0.08, chapter: 3, rotSpeed: 0.005 },
 ]

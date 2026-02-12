@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const GitHubIcon = () => (
     <svg viewBox="0 0 24 24" fill="currentColor">
@@ -16,49 +16,54 @@ const ExternalIcon = () => (
 
 const projects = [
     {
-        icon: '🐧',
+        iconImg: '/images/fluxlinux-icon.webp',
         iconBg: 'linear-gradient(135deg, #4CAF50, #2196F3)',
         title: 'FluxLinux',
         description: 'Run full Linux desktop environments on Android with GPU acceleration and complete development stacks. Published on F-Droid.',
         tags: ['Android', 'Kotlin', 'Linux', 'Shell'],
         github: 'https://github.com/abhay-byte/fluxlinux',
-        live: 'https://f-droid.org/packages/com.ivarna.fluxlinux'
+        live: 'https://f-droid.org/packages/com.ivarna.fluxlinux',
+        screenshot: '/images/fluxlinux-screenshot.png'
     },
     {
-        icon: '⚡',
+        iconImg: '/images/finalbenchmark-icon.png',
         iconBg: 'linear-gradient(135deg, #FF6B6B, #fabd2f)',
         title: 'FinalBenchmark 2',
         description: 'Comprehensive CPU benchmarking app with 10+ tests, thermal management, and detailed performance analytics. Published on F-Droid.',
         tags: ['Android', 'Kotlin', 'Performance'],
         github: 'https://github.com/abhay-byte/finalbenchmark-platform',
-        live: 'https://f-droid.org/packages/com.ivarna.finalbenchmark2'
+        live: 'https://f-droid.org/packages/com.ivarna.finalbenchmark2',
+        screenshot: '/images/finalbenchmark-screenshot.png'
     },
     {
-        icon: '📊',
+        iconImg: '/images/deviceinsight-icon.webp',
         iconBg: 'linear-gradient(135deg, #667eea, #764ba2)',
         title: 'DeviceInsight',
         description: 'Premium system monitoring with glassmorphism UI, real-time analytics, and kernel-level performance metrics.',
         tags: ['Android', 'Kotlin', 'UI/UX'],
         github: 'https://github.com/abhay-byte/deviceinsight',
-        live: null
+        live: null,
+        screenshot: '/images/deviceinsight-screenshot.png'
     },
     {
-        icon: '🏥',
+        iconImg: '/images/clinico-icon.png',
         iconBg: 'linear-gradient(135deg, #00C7B7, #4CAF50)',
         title: 'Clinico',
         description: 'AI-powered healthcare platform with 24/7 AI companion, telehealth, and hyperlocal clinic discovery. Full-stack with React + Node.js.',
         tags: ['React', 'Node.js', 'AI', 'Full Stack'],
         github: 'https://github.com/abhay-byte/minor-project-gtbit',
-        live: 'https://clinicofrontend.onrender.com/'
+        live: 'https://clinicofrontend.onrender.com/',
+        screenshot: '/images/clinico-screenshot.png'
     },
     {
-        icon: '⚙️',
+        iconImg: '/images/mkm-icon.png',
         iconBg: 'linear-gradient(135deg, #fabd2f, #FF6B6B)',
         title: 'MKM',
         description: 'Minimal Kernel Manager for persistent swap management with Shizuku support. Smart memory optimization for Android.',
         tags: ['Android', 'Kotlin', 'Kernel'],
         github: 'https://github.com/abhay-byte/mkm',
-        live: null
+        live: null,
+        screenshot: '/images/mkm-screenshot.png'
     },
     {
         icon: '🏎️',
@@ -67,7 +72,8 @@ const projects = [
         description: 'High-speed futuristic racing game with diverse planets, strategic challenges, and immersive gameplay built in Unity.',
         tags: ['Unity', 'C#', 'Game Dev'],
         github: 'https://github.com/abhay-byte/planet-racing',
-        live: null
+        live: null,
+        screenshot: '/images/fantasy-racing.png'
     },
     {
         icon: '⚔️',
@@ -76,7 +82,8 @@ const projects = [
         description: '2D Role Playing Game set in the Medieval age with a massive 25km² open world of Xirsia Isle to explore.',
         tags: ['Unity', 'C#', 'RPG', 'Game Dev'],
         github: 'https://github.com/abhay-byte/Saiko-no-senshi-0.1v',
-        live: 'https://hind-dev.web.app/#/'
+        live: 'https://hind-dev.web.app/#/',
+        screenshot: null
     },
     {
         icon: '👻',
@@ -85,16 +92,18 @@ const projects = [
         description: "Horror game set in St. Xavier's Boarding School in Ooty during Valentine's Day with mysterious occurrences.",
         tags: ['Unity', 'C#', 'Horror', 'Game Dev'],
         github: 'https://github.com/abhay-byte/valentines-day-unity',
-        live: null
+        live: null,
+        screenshot: null
     },
     {
-        icon: '🌐',
+        iconImg: '/images/portfolio-icon.ico',
         iconBg: 'linear-gradient(135deg, #667eea, #764ba2)',
         title: 'WebGL Website',
         description: 'Interactive website built with WebGL for stunning 3D graphics and animations showcasing creative web development.',
         tags: ['WebGL', 'Three.js', 'JavaScript'],
         github: 'https://github.com/abhay-byte/webgl-website',
-        live: 'https://abhay-raj.web.app/'
+        live: 'https://abhay-raj.web.app/',
+        screenshot: '/images/webgl-screenshot.png'
     },
     {
         icon: '📈',
@@ -103,7 +112,8 @@ const projects = [
         description: 'AI-powered investment growth predictor with monthly contribution simulations, CSV reports, and graphical insights.',
         tags: ['Python', 'Streamlit', 'AI'],
         github: 'https://github.com/abhay-byte/AI_WRAPPER_PROJECTS',
-        live: 'https://aiwrapper.streamlit.app'
+        live: 'https://aiwrapper.streamlit.app',
+        screenshot: null
     }
 ]
 
@@ -139,9 +149,18 @@ export default function Projects() {
                         key={i}
                         style={{ transitionDelay: `${i * 0.08}s` }}
                     >
+                        {project.screenshot && (
+                            <div className="project-screenshot">
+                                <img src={project.screenshot} alt={`${project.title} screenshot`} loading="lazy" />
+                            </div>
+                        )}
                         <div className="project-card-header">
                             <div className="project-icon" style={{ background: project.iconBg }}>
-                                {project.icon}
+                                {project.iconImg ? (
+                                    <img src={project.iconImg} alt={project.title} />
+                                ) : (
+                                    project.icon
+                                )}
                             </div>
                             <h3>{project.title}</h3>
                         </div>

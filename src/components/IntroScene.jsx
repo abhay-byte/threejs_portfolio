@@ -1,123 +1,64 @@
 import { useRef, useMemo, useEffect, useState, Suspense } from 'react'
-import { Canvas, useFrame, extend } from '@react-three/fiber'
+import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
 import { Stars, useGLTF, shaderMaterial } from '@react-three/drei'
 import * as THREE from 'three'
 
-/* ============ CUSTOM SHADER MATERIALS ============ */
+/* ============ OVERLAY SHADER MATERIALS ============ */
+/* These render as a second pass over the real textured asteroid */
 
-/* Stage 1: Wireframe glow — digital/game dev origin story */
+/* Stage 0: Wireframe glow overlay — digital/game dev origin story */
 const WireframeGlowMaterial = shaderMaterial(
-  {
-    uTime: 0,
-    uColor1: new THREE.Color('#fabd2f'),
-    uColor2: new THREE.Color('#ff6b6b'),
-    uOpacity: 1.0,
-  },
-  // vertex
-  `
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    void main() {
-      vPosition = position;
-      vNormal = normal;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  // fragment
-  `
-    uniform float uTime;
-    uniform vec3 uColor1;
-    uniform vec3 uColor2;
-    uniform float uOpacity;
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    void main() {
-      float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.5);
-      float scanLine = sin(vPosition.y * 30.0 + uTime * 3.0) * 0.5 + 0.5;
-      vec3 color = mix(uColor1, uColor2, scanLine * fresnel);
-      float alpha = fresnel * 0.8 + scanLine * 0.2;
-      gl_FragColor = vec4(color, alpha * uOpacity);
-    }
-  `
+  { uTime: 0, uColor1: new THREE.Color('#fabd2f'), uColor2: new THREE.Color('#ff6b6b'), uOpacity: 1.0 },
+  `varying vec3 vPosition; varying vec3 vNormal;
+   void main() { vPosition = position; vNormal = normal;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.01, 1.0); }`,
+  `uniform float uTime; uniform vec3 uColor1; uniform vec3 uColor2; uniform float uOpacity;
+   varying vec3 vPosition; varying vec3 vNormal;
+   void main() {
+     float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0))), 2.5);
+     float scanLine = sin(vPosition.y * 30.0 + uTime * 3.0) * 0.5 + 0.5;
+     vec3 color = mix(uColor1, uColor2, scanLine * fresnel);
+     float alpha = (fresnel * 0.7 + scanLine * 0.15) * uOpacity;
+     gl_FragColor = vec4(color, alpha);
+   }`
 )
 
-/* Stage 2: Holographic scan — tech/app building era */
+/* Stage 2: Holographic scan overlay — tech/app building era */
 const HologramMaterial = shaderMaterial(
-  {
-    uTime: 0,
-    uColor: new THREE.Color('#667eea'),
-    uOpacity: 1.0,
-  },
-  // vertex
-  `
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    varying vec2 vUv;
-    void main() {
-      vPosition = position;
-      vNormal = normal;
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  // fragment
-  `
-    uniform float uTime;
-    uniform vec3 uColor;
-    uniform float uOpacity;
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    varying vec2 vUv;
-    void main() {
-      float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0))), 3.0);
-      float scanLine = step(0.98, sin(vPosition.y * 60.0 + uTime * 5.0));
-      float horizontalScan = smoothstep(-0.02, 0.02, sin(vPosition.y * 2.0 - uTime * 1.5));
-      float grid = step(0.95, sin(vUv.x * 100.0)) + step(0.95, sin(vUv.y * 100.0));
-      vec3 baseColor = uColor * (0.3 + fresnel * 0.7);
-      vec3 finalColor = baseColor + vec3(scanLine * 0.5) + vec3(grid * 0.1);
-      finalColor *= horizontalScan * 0.5 + 0.5;
-      float alpha = fresnel * 0.6 + scanLine * 0.3 + 0.15;
-      gl_FragColor = vec4(finalColor, alpha * uOpacity);
-    }
-  `
+  { uTime: 0, uColor: new THREE.Color('#667eea'), uOpacity: 1.0 },
+  `varying vec3 vPosition; varying vec3 vNormal; varying vec2 vUv;
+   void main() { vPosition = position; vNormal = normal; vUv = uv;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.01, 1.0); }`,
+  `uniform float uTime; uniform vec3 uColor; uniform float uOpacity;
+   varying vec3 vPosition; varying vec3 vNormal; varying vec2 vUv;
+   void main() {
+     float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0))), 3.0);
+     float scanLine = step(0.98, sin(vPosition.y * 60.0 + uTime * 5.0));
+     float horizontalScan = smoothstep(-0.02, 0.02, sin(vPosition.y * 2.0 - uTime * 1.5));
+     float grid = step(0.95, sin(vUv.x * 100.0)) + step(0.95, sin(vUv.y * 100.0));
+     vec3 finalColor = uColor * (0.3 + fresnel * 0.7) + vec3(scanLine * 0.4 + grid * 0.08);
+     finalColor *= horizontalScan * 0.5 + 0.5;
+     float alpha = (fresnel * 0.5 + scanLine * 0.3 + 0.05) * uOpacity;
+     gl_FragColor = vec4(finalColor, alpha);
+   }`
 )
 
-/* Stage 3: Emissive bloom — open source / community glow */
+/* Stage 3: Emissive bloom overlay — open source / community glow */
 const EmissiveBloomMaterial = shaderMaterial(
-  {
-    uTime: 0,
-    uColor1: new THREE.Color('#fabd2f'),
-    uColor2: new THREE.Color('#4CAF50'),
-    uOpacity: 1.0,
-  },
-  // vertex
-  `
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    void main() {
-      vPosition = position;
-      vNormal = normal;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  // fragment
-  `
-    uniform float uTime;
-    uniform vec3 uColor1;
-    uniform vec3 uColor2;
-    uniform float uOpacity;
-    varying vec3 vPosition;
-    varying vec3 vNormal;
-    void main() {
-      float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0))), 2.0);
-      float pulse = sin(uTime * 2.0) * 0.15 + 0.85;
-      float wave = sin(vPosition.x * 5.0 + vPosition.y * 5.0 + uTime * 2.0) * 0.5 + 0.5;
-      vec3 color = mix(uColor1, uColor2, wave);
-      color += fresnel * vec3(0.3, 0.6, 0.2);
-      float alpha = (0.4 + fresnel * 0.6) * pulse;
-      gl_FragColor = vec4(color, alpha * uOpacity);
-    }
-  `
+  { uTime: 0, uColor1: new THREE.Color('#fabd2f'), uColor2: new THREE.Color('#4CAF50'), uOpacity: 1.0 },
+  `varying vec3 vPosition; varying vec3 vNormal;
+   void main() { vPosition = position; vNormal = normal;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.01, 1.0); }`,
+  `uniform float uTime; uniform vec3 uColor1; uniform vec3 uColor2; uniform float uOpacity;
+   varying vec3 vPosition; varying vec3 vNormal;
+   void main() {
+     float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0))), 2.0);
+     float pulse = sin(uTime * 2.0) * 0.15 + 0.85;
+     float wave = sin(vPosition.x * 5.0 + vPosition.y * 5.0 + uTime * 2.0) * 0.5 + 0.5;
+     vec3 color = mix(uColor1, uColor2, wave) + fresnel * vec3(0.3, 0.6, 0.2);
+     float alpha = (fresnel * 0.5 + 0.05) * pulse * uOpacity;
+     gl_FragColor = vec4(color, alpha);
+   }`
 )
 
 extend({ WireframeGlowMaterial, HologramMaterial, EmissiveBloomMaterial })
@@ -169,100 +110,116 @@ function ParticleField({ count = 600, scrollProgress }) {
   )
 }
 
-/* ============ NASA MODEL WITH STAGED SHADERS ============ */
-function EarthModel({ scrollProgress }) {
+/* ============ NASA ASTEROID WITH REAL TEXTURE + SHADER OVERLAYS ============ */
+function AsteroidModel({ scrollProgress }) {
   const { scene } = useGLTF('/models/earth.glb')
-  const earthRef = useRef()
-  const shaderRef1 = useRef()
+  const asteroidRef = useRef()
+  const overlayRef = useRef()
+  const shaderRef0 = useRef()
   const shaderRef2 = useRef()
   const shaderRef3 = useRef()
-  const originalMaterials = useRef(new Map())
-  const clonedScene = useMemo(() => scene.clone(true), [scene])
 
-  // Store original materials on first render
-  useEffect(() => {
-    clonedScene.traverse((child) => {
-      if (child.isMesh) {
-        originalMaterials.current.set(child.uuid, child.material)
-      }
-    })
-  }, [clonedScene])
+  // Clone scene for the overlay pass
+  const mainScene = useMemo(() => scene.clone(true), [scene])
+  const overlayScene = useMemo(() => scene.clone(true), [scene])
 
-  // Determine which stage we're in based on scroll
-  // 0-0.25: Stage 0 (wireframe glow)
-  // 0.25-0.5: Stage 1 (original textured model revealed)
-  // 0.5-0.75: Stage 2 (holographic scan)
-  // 0.75-1.0: Stage 3 (emissive bloom → fades to original)
   useFrame((state) => {
-    if (!earthRef.current) return
+    if (!asteroidRef.current) return
     const t = state.clock.elapsedTime
 
-    // Rotation
-    earthRef.current.rotation.y += 0.003
+    // Rotate both in sync
+    asteroidRef.current.rotation.y += 0.003
+    if (overlayRef.current) overlayRef.current.rotation.y = asteroidRef.current.rotation.y
 
-    // Bigger scale: base 3.5, grows to 4.5
+    // Scale: big, grows with scroll
     const baseScale = 3.5
     const s = baseScale + scrollProgress * 1.0
-    earthRef.current.scale.set(s, s, s)
+    asteroidRef.current.scale.set(s, s, s)
+    if (overlayRef.current) overlayRef.current.scale.set(s, s, s)
 
     // Gentle float
-    earthRef.current.position.y = Math.sin(t * 0.4) * 0.15
+    const yPos = Math.sin(t * 0.4) * 0.15
+    asteroidRef.current.position.y = yPos
+    if (overlayRef.current) overlayRef.current.position.y = yPos
 
     // Update shader uniforms
-    if (shaderRef1.current) shaderRef1.current.uTime = t
+    if (shaderRef0.current) shaderRef0.current.uTime = t
     if (shaderRef2.current) shaderRef2.current.uTime = t
     if (shaderRef3.current) shaderRef3.current.uTime = t
 
-    // Stage transitions
-    const stage = scrollProgress * 4 // 0 to 4
+    // Determine stage (0-4) and apply overlay shader
+    // Real texture is ALWAYS visible on mainScene
+    // Overlay changes per stage
+    const stage = scrollProgress * 4
 
-    clonedScene.traverse((child) => {
+    // Compute overlay opacity with smooth fade between stages
+    let overlay0Opacity = 0
+    let overlay2Opacity = 0
+    let overlay3Opacity = 0
+
+    if (stage < 1) {
+      // Chapter I: wireframe glow overlay
+      overlay0Opacity = 1.0
+    } else if (stage < 1.3) {
+      // Fade out wireframe
+      overlay0Opacity = 1.0 - (stage - 1) / 0.3
+    } else if (stage < 1.7) {
+      // Chapter II: pure texture, no overlay
+    } else if (stage < 2) {
+      // Fade in hologram
+      overlay2Opacity = (stage - 1.7) / 0.3
+    } else if (stage < 3) {
+      // Chapter III: holographic overlay
+      overlay2Opacity = 1.0
+    } else if (stage < 3.3) {
+      // Fade hologram out, bloom in
+      overlay2Opacity = 1.0 - (stage - 3) / 0.3
+      overlay3Opacity = (stage - 3) / 0.3
+    } else {
+      // Chapter IV: emissive bloom overlay
+      overlay3Opacity = 1.0
+    }
+
+    // Apply overlay material to all overlay meshes
+    if (shaderRef0.current) shaderRef0.current.uOpacity = overlay0Opacity
+    if (shaderRef2.current) shaderRef2.current.uOpacity = overlay2Opacity
+    if (shaderRef3.current) shaderRef3.current.uOpacity = overlay3Opacity
+
+    // Pick which shader to show on overlay meshes
+    overlayScene.traverse((child) => {
       if (!child.isMesh) return
-
-      if (stage < 1) {
-        // Stage 0: Wireframe glow
-        if (shaderRef1.current) {
-          child.material = shaderRef1.current
-          child.material.transparent = true
-          child.material.side = THREE.DoubleSide
-        }
-      } else if (stage < 2) {
-        // Stage 1: Original textured with reveal
-        const original = originalMaterials.current.get(child.uuid)
-        if (original) {
-          child.material = original
-        }
-      } else if (stage < 3) {
-        // Stage 2: Holographic scan
-        if (shaderRef2.current) {
-          child.material = shaderRef2.current
-          child.material.transparent = true
-          child.material.side = THREE.DoubleSide
-        }
+      if (overlay0Opacity > 0.01 && shaderRef0.current) {
+        child.material = shaderRef0.current
+        child.visible = true
+      } else if (overlay2Opacity > 0.01 && shaderRef2.current) {
+        child.material = shaderRef2.current
+        child.visible = true
+      } else if (overlay3Opacity > 0.01 && shaderRef3.current) {
+        child.material = shaderRef3.current
+        child.visible = true
       } else {
-        // Stage 3: Emissive bloom
-        if (shaderRef3.current) {
-          child.material = shaderRef3.current
-          child.material.transparent = true
-          child.material.side = THREE.DoubleSide
-        }
+        child.visible = false
+      }
+      if (child.material) {
+        child.material.transparent = true
+        child.material.side = THREE.FrontSide
+        child.material.depthWrite = false
       }
     })
   })
 
   return (
     <group>
-      {/* Hidden shader material instances */}
-      <wireframeGlowMaterial ref={shaderRef1} transparent side={THREE.DoubleSide} />
-      <hologramMaterial ref={shaderRef2} transparent side={THREE.DoubleSide} />
-      <emissiveBloomMaterial ref={shaderRef3} transparent side={THREE.DoubleSide} />
+      {/* Hidden shader instances for refs */}
+      <wireframeGlowMaterial ref={shaderRef0} transparent depthWrite={false} />
+      <hologramMaterial ref={shaderRef2} transparent depthWrite={false} />
+      <emissiveBloomMaterial ref={shaderRef3} transparent depthWrite={false} />
 
-      <primitive
-        ref={earthRef}
-        object={clonedScene}
-        scale={3.5}
-        position={[0, 0, 0]}
-      />
+      {/* Real textured asteroid — always visible */}
+      <primitive ref={asteroidRef} object={mainScene} scale={3.5} />
+
+      {/* Shader overlay — rendered on top */}
+      <primitive ref={overlayRef} object={overlayScene} scale={3.5} renderOrder={1} />
     </group>
   )
 }
@@ -270,14 +227,12 @@ function EarthModel({ scrollProgress }) {
 /* ============ ORBIT RINGS ============ */
 function OrbitRing({ radius = 4.5, tilt = 2.5, scrollProgress }) {
   const ref = useRef()
-
   useFrame((state) => {
     if (ref.current) {
       ref.current.rotation.x = Math.PI / tilt + Math.sin(state.clock.elapsedTime * 0.5) * 0.15
       ref.current.rotation.z = state.clock.elapsedTime * 0.08
     }
   })
-
   return (
     <mesh ref={ref}>
       <torusGeometry args={[radius, 0.008, 16, 200]} />
@@ -303,10 +258,111 @@ function LoadingFallback() {
   )
 }
 
+/* ============ CAMERA CLOSE-UP CONTROLLER ============ */
+function CameraController({ scrollProgress }) {
+  const { camera } = useThree()
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+
+    // Zoom in as user scrolls: z goes from 8 → 4 (close-up)
+    const zStart = 8
+    const zEnd = 4
+    const targetZ = zStart - scrollProgress * (zStart - zEnd)
+
+    // Subtle orbital sway
+    const swayX = Math.sin(t * 0.2) * 0.3 * (1 - scrollProgress * 0.5)
+    const swayY = Math.cos(t * 0.15) * 0.2 * (1 - scrollProgress * 0.5)
+
+    // Smooth lerp
+    camera.position.x += (swayX - camera.position.x) * 0.05
+    camera.position.y += (swayY - camera.position.y) * 0.05
+    camera.position.z += (targetZ - camera.position.z) * 0.05
+
+    camera.lookAt(0, 0, 0)
+  })
+
+  return null
+}
+
+/* ============ RACING CAR MODEL (visible in all chapters) ============ */
+function RacingCarModel({ scrollProgress }) {
+  const { scene } = useGLTF('/models/car.glb')
+  const carRef = useRef()
+  const clonedScene = useMemo(() => {
+    const clone = scene.clone(true)
+    const chromeMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#c0c0c0'),
+      metalness: 0.95,
+      roughness: 0.08,
+      emissive: new THREE.Color('#fabd2f'),
+      emissiveIntensity: 0.15,
+      envMapIntensity: 2.0,
+    })
+    clone.traverse((child) => {
+      if (child.isMesh) child.material = chromeMat
+    })
+    return clone
+  }, [scene])
+
+  useFrame((state) => {
+    if (!carRef.current) return
+    const t = state.clock.elapsedTime
+    const stage = scrollProgress * 4 // 0=ChI, 1=ChII, 2=ChIII, 3=ChIV
+
+    carRef.current.visible = true
+    const s = 0.5
+    carRef.current.scale.set(s, s, s)
+
+    if (stage < 1) {
+      // Chapter I: orbit right side, higher up
+      const angle = t * 0.3
+      carRef.current.position.x = Math.cos(angle) * 6.5
+      carRef.current.position.z = Math.sin(angle) * 6.5
+      carRef.current.position.y = 2.0 + Math.sin(t * 0.6) * 0.2
+      carRef.current.rotation.y = -angle - Math.PI / 2
+      carRef.current.rotation.z = -0.12
+      carRef.current.rotation.x = 0
+    } else if (stage < 2) {
+      // Chapter II: parked lower-left, gently floating
+      const targetX = -5.5
+      const targetZ = 3.0
+      const targetY = -1.5 + Math.sin(t * 0.5) * 0.15
+      carRef.current.position.x += (targetX - carRef.current.position.x) * 0.04
+      carRef.current.position.z += (targetZ - carRef.current.position.z) * 0.04
+      carRef.current.position.y += (targetY - carRef.current.position.y) * 0.04
+      carRef.current.rotation.y += (0.8 - carRef.current.rotation.y) * 0.04
+      carRef.current.rotation.z += (0.1 - carRef.current.rotation.z) * 0.04
+      carRef.current.rotation.x = Math.sin(t * 0.3) * 0.02
+    } else if (stage < 3) {
+      // Chapter III: sweeping arc top-right
+      const angle = t * 0.25 + Math.PI * 0.5
+      carRef.current.position.x = Math.cos(angle) * 5.5
+      carRef.current.position.z = Math.sin(angle) * 4.0
+      carRef.current.position.y = 3.0 + Math.sin(t * 0.7) * 0.3
+      carRef.current.rotation.y = -angle - Math.PI / 2
+      carRef.current.rotation.z = 0.15
+      carRef.current.rotation.x = Math.sin(t * 0.5) * 0.05
+    } else {
+      // Chapter IV: slow flyby close to camera
+      const angle = t * 0.15 + Math.PI
+      carRef.current.position.x = Math.cos(angle) * 4.5
+      carRef.current.position.z = Math.sin(angle) * 4.5 + 2.0
+      carRef.current.position.y = 0.5 + Math.sin(t * 0.4) * 0.1
+      carRef.current.rotation.y = -angle - Math.PI / 2
+      carRef.current.rotation.z = -0.08
+      carRef.current.rotation.x = 0
+    }
+  })
+
+  return <primitive ref={carRef} object={clonedScene} scale={0.5} />
+}
+
 /* ============ MAIN SCENE ============ */
 function Scene({ scrollProgress }) {
   return (
     <>
+      <CameraController scrollProgress={scrollProgress} />
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 3, 5]} intensity={1.8} color="#ffffff" />
       <pointLight position={[-5, -3, 5]} intensity={0.6} color="#667eea" />
@@ -314,7 +370,8 @@ function Scene({ scrollProgress }) {
       <Stars radius={80} depth={60} count={1500} factor={3} fade speed={0.4} />
       <ParticleField scrollProgress={scrollProgress} />
       <Suspense fallback={<LoadingFallback />}>
-        <EarthModel scrollProgress={scrollProgress} />
+        <AsteroidModel scrollProgress={scrollProgress} />
+        <RacingCarModel scrollProgress={scrollProgress} />
       </Suspense>
       <OrbitRing radius={5} tilt={2.5} scrollProgress={scrollProgress} />
       <OrbitRing radius={6} tilt={3.5} scrollProgress={scrollProgress} />
@@ -331,23 +388,19 @@ export default function IntroScene({ onComplete }) {
 
   const slides = [
     {
-      label: 'Chapter I',
-      title: 'It All Started With Games',
+      label: 'Chapter I', title: 'It All Started With Games',
       text: 'From building 2D RPGs with massive open worlds to crafting futuristic racing experiences — I fell in love with creating digital worlds from scratch.'
     },
     {
-      label: 'Chapter II',
-      title: 'Then Came the Apps',
+      label: 'Chapter II', title: 'Then Came the Apps',
       text: 'I shifted to building Android apps that push boundaries — from GPU-accelerated Linux on mobile to kernel managers and CPU benchmarking tools.'
     },
     {
-      label: 'Chapter III',
-      title: 'Building for Everyone',
+      label: 'Chapter III', title: 'Building for Everyone',
       text: 'Open source became my north star. Every project I build is for the community — free, transparent, and made to empower developers everywhere.'
     },
     {
-      label: 'Chapter IV',
-      title: 'Welcome to My World',
+      label: 'Chapter IV', title: 'Welcome to My World',
       text: 'Scroll down to explore my projects, skills, and everything I\'ve built on this journey.'
     }
   ]
@@ -423,3 +476,4 @@ export default function IntroScene({ onComplete }) {
 }
 
 useGLTF.preload('/models/earth.glb')
+useGLTF.preload('/models/car.glb')

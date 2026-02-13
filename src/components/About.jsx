@@ -20,18 +20,7 @@ const stats = [
 function FaceBackground() {
     const { scene } = useGLTF('/models/hitem3d.glb')
     const groupRef = useRef()
-    const clonedScene = useMemo(() => {
-        const c = scene.clone(true)
-        c.traverse((child) => {
-            if (child.isMesh && child.material) {
-                child.material = child.material.clone()
-                child.material.transparent = true
-                child.material.opacity = 0.6
-                child.material.depthWrite = false
-            }
-        })
-        return c
-    }, [scene])
+    const clonedScene = useMemo(() => scene.clone(true), [scene])
 
     useFrame((state) => {
         if (groupRef.current) {
@@ -43,7 +32,7 @@ function FaceBackground() {
 
     return (
         <group ref={groupRef} position={[0, 0, 0]}>
-            <primitive object={clonedScene} scale={3.0} />
+            <primitive object={clonedScene} scale={1.8} />
         </group>
     )
 }
@@ -82,18 +71,6 @@ export default function About() {
 
     return (
         <section className="section" id="about" ref={sectionRef}>
-            {/* 3D face rotating in the background */}
-            <div className="about-canvas">
-                <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 1.5]}>
-                    <ambientLight intensity={0.3} />
-                    <directionalLight position={[3, 3, 5]} intensity={0.8} color="#ffffff" />
-                    <pointLight position={[-3, -2, 4]} intensity={0.3} color="#fabd2f" />
-                    <Suspense fallback={<FaceFallback />}>
-                        <FaceBackground />
-                    </Suspense>
-                </Canvas>
-            </div>
-
             <div className="section-header reveal">
                 <p className="section-label">About</p>
                 <h2 className="section-title">Who I Am</h2>
@@ -127,6 +104,16 @@ export default function About() {
                 </div>
 
                 <div className="reveal">
+                    <div className="about-canvas">
+                        <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 1.5]}>
+                            <ambientLight intensity={0.5} />
+                            <directionalLight position={[3, 3, 5]} intensity={1.0} color="#ffffff" />
+                            <pointLight position={[-3, -2, 4]} intensity={0.4} color="#fabd2f" />
+                            <Suspense fallback={<FaceFallback />}>
+                                <FaceBackground />
+                            </Suspense>
+                        </Canvas>
+                    </div>
                     <p className="section-label" style={{ marginBottom: 16 }}>Tech Stack</p>
                     <div className="skills-grid">
                         {skills.map((skill, i) => (

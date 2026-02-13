@@ -26,7 +26,7 @@ function FaceBackground() {
             if (child.isMesh && child.material) {
                 child.material = child.material.clone()
                 child.material.transparent = true
-                child.material.opacity = 0.15
+                child.material.opacity = 0.6
                 child.material.depthWrite = false
             }
         })

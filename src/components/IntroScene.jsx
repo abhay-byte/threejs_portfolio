@@ -1,7 +1,37 @@
 import { useRef, useMemo, useEffect, useState, Suspense } from 'react'
 import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
-import { Stars, useGLTF, shaderMaterial, Float } from '@react-three/drei'
+import { Stars, useGLTF, shaderMaterial, Float, useProgress } from '@react-three/drei'
 import * as THREE from 'three'
+
+/* ============ LOADING SCREEN ============ */
+function LoadingScreen() {
+  const { progress, active } = useProgress()
+  const [visible, setVisible] = useState(true)
+  const [fadeOut, setFadeOut] = useState(false)
+
+  useEffect(() => {
+    if (progress >= 100 && !active) {
+      setFadeOut(true)
+      const timer = setTimeout(() => setVisible(false), 800)
+      return () => clearTimeout(timer)
+    }
+  }, [progress, active])
+
+  if (!visible) return null
+
+  return (
+    <div className={`loading-overlay ${fadeOut ? 'loading-fade-out' : ''}`}>
+      <div className="loading-content">
+        <div className="loading-logo">AR</div>
+        <div className="loading-bar-track">
+          <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
+        </div>
+        <p className="loading-text">{Math.round(progress)}%</p>
+        <p className="loading-hint">Loading models…</p>
+      </div>
+    </div>
+  )
+}
 
 /* ============ OVERLAY SHADER MATERIALS ============ */
 /* These render as a second pass over the real textured asteroid */
@@ -61,7 +91,30 @@ const EmissiveBloomMaterial = shaderMaterial(
    }`
 )
 
-extend({ WireframeGlowMaterial, HologramMaterial, EmissiveBloomMaterial })
+/* Stage motion: Scroll-reactive energy glow — accent palette motion trail */
+const MotionGlowMaterial = shaderMaterial(
+  { uTime: 0, uVelocity: 0, uColor1: new THREE.Color('#fabd2f'), uColor2: new THREE.Color('#ff6b6b'), uOpacity: 1.0 },
+  `varying vec3 vPosition; varying vec3 vNormal;
+   void main() { vPosition = position; vNormal = normal;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.02, 1.0); }`,
+  `uniform float uTime; uniform float uVelocity; uniform vec3 uColor1; uniform vec3 uColor2; uniform float uOpacity;
+   varying vec3 vPosition; varying vec3 vNormal;
+   void main() {
+     float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0))), 2.0);
+     float flow = sin(vPosition.y * 8.0 + vPosition.x * 3.0 + uTime * 4.0) * 0.5 + 0.5;
+     float streak = sin(vPosition.y * 20.0 + uTime * 8.0) * 0.5 + 0.5;
+     streak = pow(streak, 3.0);
+     vec3 color = mix(uColor1, uColor2, flow);
+     color += vec3(1.0, 0.85, 0.4) * streak * 0.3;
+     float vel = clamp(uVelocity, 0.0, 1.0);
+     float baseAlpha = fresnel * 0.15 + streak * 0.05;
+     float scrollAlpha = (fresnel * 0.6 + streak * 0.3) * vel;
+     float alpha = (baseAlpha + scrollAlpha) * uOpacity;
+     gl_FragColor = vec4(color, alpha);
+   }`
+)
+
+extend({ WireframeGlowMaterial, HologramMaterial, EmissiveBloomMaterial, MotionGlowMaterial })
 
 /* ============ PARTICLE FIELD ============ */
 function ParticleField({ count = 600, scrollProgress }) {
@@ -111,23 +164,39 @@ function ParticleField({ count = 600, scrollProgress }) {
 }
 
 /* ============ NASA ASTEROID WITH REAL TEXTURE + SHADER OVERLAYS ============ */
-function AsteroidModel({ scrollProgress }) {
+function AsteroidModel({ scrollProgress, scrollVelocity = 0 }) {
   const { scene } = useGLTF('/models/earth.glb')
   const asteroidRef = useRef()
   const overlayRef = useRef()
   const shaderRef0 = useRef()
   const shaderRef2 = useRef()
   const shaderRef3 = useRef()
+  const mainMeshesRef = useRef([])
 
   // Clone scene for the overlay pass
-  const mainScene = useMemo(() => scene.clone(true), [scene])
+  const mainScene = useMemo(() => {
+    const c = scene.clone(true)
+    // Collect mesh refs and enable emissive
+    const meshes = []
+    c.traverse((child) => {
+      if (child.isMesh && child.material) {
+        const mat = child.material.clone()
+        mat.emissive = new THREE.Color('#000000')
+        mat.emissiveIntensity = 0
+        child.material = mat
+        meshes.push(child)
+      }
+    })
+    mainMeshesRef.current = meshes
+    return c
+  }, [scene])
   const overlayScene = useMemo(() => scene.clone(true), [scene])
 
   useFrame((state) => {
     if (!asteroidRef.current) return
     const t = state.clock.elapsedTime
 
-    // Rotate both in sync
+    // Rotate in sync
     asteroidRef.current.rotation.y += 0.003
     if (overlayRef.current) overlayRef.current.rotation.y = asteroidRef.current.rotation.y
 
@@ -141,6 +210,21 @@ function AsteroidModel({ scrollProgress }) {
     const yPos = Math.sin(t * 0.4) * 0.15
     asteroidRef.current.position.y = yPos
     if (overlayRef.current) overlayRef.current.position.y = yPos
+
+    // === Accent color glow on main asteroid ===
+    const pulse = Math.sin(t * 2.0) * 0.5 + 0.5
+    const baseGlow = 0.15 + pulse * 0.1
+    const velBoost = scrollVelocity * 0.8
+    const glowIntensity = baseGlow + velBoost
+    const color1 = new THREE.Color('#fabd2f')
+    const color2 = new THREE.Color('#ff6b6b')
+    const glowColor = color1.clone().lerp(color2, pulse)
+    mainMeshesRef.current.forEach((mesh) => {
+      if (mesh.material) {
+        mesh.material.emissive = glowColor
+        mesh.material.emissiveIntensity = glowIntensity
+      }
+    })
 
     // Update shader uniforms
     if (shaderRef0.current) shaderRef0.current.uTime = t
@@ -479,7 +563,7 @@ function Class12Books({ scrollProgress }) {
           object={csBook.scene}
           position={[3.5, 2, 0]}
           scale={0.5}
-          rotation={[0.5, -0.5, 0]}
+          rotation={[0.2, 0, 0.1]}
         />
       </Float>
 
@@ -489,7 +573,7 @@ function Class12Books({ scrollProgress }) {
           object={physicsBook.scene}
           position={[-3.5, -2, 1]}
           scale={0.5}
-          rotation={[-0.2, 0.5, 0.2]}
+          rotation={[-0.1, 0, -0.15]}
         />
       </Float>
 
@@ -499,7 +583,7 @@ function Class12Books({ scrollProgress }) {
           object={mathBook.scene}
           position={[-3, 2.5, -1]}
           scale={0.5}
-          rotation={[0.3, 0.8, -0.1]}
+          rotation={[0.15, 0, 0.1]}
         />
       </Float>
 
@@ -509,21 +593,41 @@ function Class12Books({ scrollProgress }) {
           object={chemBook.scene}
           position={[3, -1.5, -1]}
           scale={0.5}
-          rotation={[-0.4, -0.3, 0.1]}
+          rotation={[-0.1, 0, -0.1]}
         />
       </Float>
     </group>
   )
 }
 
+/* ============ NEON SHADER FOR CONE ============ */
+const NeonConeMaterial = shaderMaterial(
+  { uTime: 0, uColor1: new THREE.Color('#fabd2f'), uColor2: new THREE.Color('#ff6b6b') },
+  `varying vec3 vPosition; varying vec3 vNormal;
+   void main() { vPosition = position; vNormal = normal;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  `uniform float uTime; uniform vec3 uColor1; uniform vec3 uColor2;
+   varying vec3 vPosition; varying vec3 vNormal;
+   void main() {
+     float fresnel = pow(1.0 - abs(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0))), 2.5);
+     float glow = sin(vPosition.y * 12.0 + uTime * 3.0) * 0.5 + 0.5;
+     float pulse = sin(uTime * 2.5) * 0.2 + 0.8;
+     float edge = pow(fresnel, 1.5);
+     vec3 neonColor = mix(uColor1, uColor2, glow);
+     vec3 coreColor = neonColor * (0.4 + glow * 0.6) * pulse;
+     vec3 rimGlow = neonColor * edge * 1.5;
+     vec3 finalColor = coreColor + rimGlow + vec3(1.0, 0.9, 0.5) * pow(fresnel, 4.0) * 0.4;
+     gl_FragColor = vec4(finalColor, 1.0);
+   }`
+)
+extend({ NeonConeMaterial })
+
 /* ============ PROJECT MODELS (spread across all chapters) ============ */
 const PROJECT_MODELS = [
   // Chapter I — Games
-  { path: '/models/BasketballCourt.glb', pos: [-6, 3, -6], scale: 0.04, chapter: 0, rotSpeed: 0.003 },
-  { path: '/models/Cone.glb', pos: [6, -2.5, -6], scale: 0.04, chapter: 0, rotSpeed: 0.005 },
+  { path: '/models/Cone.glb', pos: [6, -2.5, -6], scale: 0.04, chapter: 0, rotSpeed: 0.005, neon: true },
   // Chapter II — Apps
   { path: '/models/TeacherChair.glb', pos: [-6, -1.5, -6], scale: 0.01, chapter: 1, rotSpeed: 0.004 },
-  { path: '/models/WesternToilet.glb', pos: [5.5, 1.5, -5], scale: 0.06, chapter: 1, rotSpeed: 0.003 },
   // Chapter III — Open Source
   { path: '/models/PlanetBuilding.glb', pos: [8, 4, -12], scale: 0.0005, chapter: 2, rotSpeed: 0.002 },
   { path: '/models/PlanetInsideStation.glb', pos: [-8, -3, -12], scale: 0.0005, chapter: 2, rotSpeed: 0.004 },
@@ -534,6 +638,7 @@ const PROJECT_MODELS = [
 function SingleProjectModel({ config, scrollProgress }) {
   const { scene } = useGLTF(config.path)
   const ref = useRef()
+  const neonRef = useRef()
   const cloned = useMemo(() => scene.clone(true), [scene])
 
   useFrame((state) => {
@@ -542,8 +647,6 @@ function SingleProjectModel({ config, scrollProgress }) {
     const stage = scrollProgress * 4
     const ch = config.chapter
 
-    // Each chapter occupies stage [ch, ch+1)
-    // Fade in: ch-0.1 to ch+0.1, visible: ch+0.1 to ch+0.85, fade out: ch+0.85 to ch+1.05
     let vis = 0
     if (stage >= ch - 0.1 && stage < ch + 0.1) vis = (stage - (ch - 0.1)) / 0.2
     else if (stage >= ch + 0.1 && stage < ch + 0.85) vis = 1.0
@@ -558,17 +661,29 @@ function SingleProjectModel({ config, scrollProgress }) {
       ref.current.rotation.y += config.rotSpeed
       ref.current.position.y = config.pos[1] + Math.sin(t * 0.4 + ch) * 0.15
 
-      cloned.traverse((child) => {
-        if (child.isMesh && child.material) {
-          child.material.transparent = true
-          child.material.opacity = vis
-        }
-      })
+      // Apply neon shader to cone model
+      if (config.neon && neonRef.current) {
+        neonRef.current.uTime = t
+        cloned.traverse((child) => {
+          if (child.isMesh) {
+            child.material = neonRef.current
+            child.material.side = THREE.DoubleSide
+          }
+        })
+      } else {
+        cloned.traverse((child) => {
+          if (child.isMesh && child.material) {
+            child.material.transparent = true
+            child.material.opacity = vis
+          }
+        })
+      }
     }
   })
 
   return (
     <group ref={ref} position={config.pos}>
+      {config.neon && <neonConeMaterial ref={neonRef} />}
       <primitive object={cloned} />
     </group>
   )
@@ -584,8 +699,213 @@ function ProjectModels({ scrollProgress }) {
   )
 }
 
+/* ============ FLOATING DEBRIS ============ */
+function FloatingDebris({ count = 25, scrollProgress }) {
+  const meshRef = useRef()
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+
+  const debris = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => ({
+      distance: 8 + Math.random() * 18,
+      angle: Math.random() * Math.PI * 2,
+      y: (Math.random() - 0.5) * 12,
+      speed: 0.1 + Math.random() * 0.3,
+      scale: 0.03 + Math.random() * 0.12,
+      wobble: Math.random() * Math.PI * 2,
+    }))
+  }, [count])
+
+  useFrame((state) => {
+    if (!meshRef.current) return
+    const t = state.clock.elapsedTime
+    debris.forEach((d, i) => {
+      const angle = d.angle + t * d.speed * 0.15
+      const x = Math.cos(angle) * d.distance
+      const z = Math.sin(angle) * d.distance
+      const y = d.y + Math.sin(t * 0.3 + d.wobble) * 0.5
+      dummy.position.set(x, y, z)
+      dummy.rotation.set(t * d.speed, t * d.speed * 0.7, 0)
+      dummy.scale.setScalar(d.scale)
+      dummy.updateMatrix()
+      meshRef.current.setMatrixAt(i, dummy.matrix)
+    })
+    meshRef.current.instanceMatrix.needsUpdate = true
+  })
+
+  return (
+    <instancedMesh ref={meshRef} args={[null, null, count]}>
+      <dodecahedronGeometry args={[1, 0]} />
+      <meshStandardMaterial color="#888888" roughness={0.8} metalness={0.2} />
+    </instancedMesh>
+  )
+}
+
+/* ============ NEBULA BACKDROP ============ */
+const NebulaMaterial = shaderMaterial(
+  { uTime: 0, uScroll: 0, uColor1: new THREE.Color('#1a0a2e'), uColor2: new THREE.Color('#16213e'), uAccent1: new THREE.Color('#fabd2f'), uAccent2: new THREE.Color('#ff6b6b') },
+  `varying vec2 vUv; varying vec3 vPos;
+   void main() {
+     vUv = uv; vPos = position;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+   }`,
+  `uniform float uTime; uniform float uScroll;
+   uniform vec3 uColor1; uniform vec3 uColor2; uniform vec3 uAccent1; uniform vec3 uAccent2;
+   varying vec2 vUv; varying vec3 vPos;
+   
+   float noise(vec2 p) {
+     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+   }
+   
+   float smoothNoise(vec2 p) {
+     vec2 i = floor(p); vec2 f = fract(p);
+     float a = noise(i); float b = noise(i + vec2(1.0, 0.0));
+     float c = noise(i + vec2(0.0, 1.0)); float d = noise(i + vec2(1.0, 1.0));
+     vec2 u = f * f * (3.0 - 2.0 * f);
+     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+   }
+   
+   float fbm(vec2 p) {
+     float val = 0.0; float amp = 0.5; float freq = 1.0;
+     for(int i = 0; i < 5; i++) {
+       val += amp * smoothNoise(p * freq);
+       freq *= 2.0; amp *= 0.5;
+     }
+     return val;
+   }
+   
+   void main() {
+     vec2 p = vUv * 3.0 + uTime * 0.02;
+     float n1 = fbm(p + vec2(uTime * 0.03, 0.0));
+     float n2 = fbm(p * 1.5 + vec2(0.0, uTime * 0.04));
+     float n3 = fbm(p * 0.8 + n1 * 0.5);
+     
+     vec3 base = mix(uColor1, uColor2, n1);
+     vec3 accent = mix(uAccent1, uAccent2, sin(uTime * 0.5 + n2 * 3.14) * 0.5 + 0.5);
+     
+     float accentMask = smoothstep(0.4, 0.7, n3) * 0.3;
+     vec3 color = mix(base, accent, accentMask);
+     
+     float alpha = smoothstep(0.1, 0.5, n1) * 0.25 + n3 * 0.1;
+     alpha *= 0.6;
+     
+     gl_FragColor = vec4(color, alpha);
+   }`
+)
+extend({ NebulaMaterial })
+
+function NebulaBG({ scrollProgress }) {
+  const matRef = useRef()
+  useFrame((state) => {
+    if (matRef.current) {
+      matRef.current.uTime = state.clock.elapsedTime
+      matRef.current.uScroll = scrollProgress
+    }
+  })
+  return (
+    <mesh position={[0, 0, -30]} renderOrder={-1}>
+      <planeGeometry args={[120, 60, 1, 1]} />
+      <nebulaMaterial ref={matRef} transparent depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
+  )
+}
+
+/* ============ SHOOTING STARS ============ */
+function ShootingStars({ count = 6 }) {
+  const groupRef = useRef()
+
+  const stars = useMemo(() => {
+    return Array.from({ length: count }, () => ({
+      startX: (Math.random() - 0.5) * 60,
+      startY: 8 + Math.random() * 12,
+      startZ: -5 + Math.random() * -15,
+      speed: 15 + Math.random() * 25,
+      delay: Math.random() * 30,
+      interval: 8 + Math.random() * 15,
+      angle: -0.3 - Math.random() * 0.5,
+      length: 1.5 + Math.random() * 2.5,
+    }))
+  }, [count])
+
+  useFrame((state) => {
+    if (!groupRef.current) return
+    const t = state.clock.elapsedTime
+    groupRef.current.children.forEach((child, i) => {
+      const s = stars[i]
+      const cycle = (t - s.delay) % s.interval
+      if (cycle < 0 || cycle > 1.5) {
+        child.visible = false
+        return
+      }
+      child.visible = true
+      const progress = cycle / 1.5
+      const x = s.startX + Math.cos(s.angle) * s.speed * progress
+      const y = s.startY + Math.sin(s.angle) * s.speed * progress
+      child.position.set(x, y, s.startZ)
+      child.scale.setScalar(1.0 - progress * 0.6)
+      child.material.opacity = Math.sin(progress * Math.PI) * 0.8
+    })
+  })
+
+  return (
+    <group ref={groupRef}>
+      {stars.map((s, i) => (
+        <mesh key={i} visible={false}>
+          <planeGeometry args={[s.length, 0.02]} />
+          <meshBasicMaterial color="#fabd2f" transparent opacity={0} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/* ============ GLOW DUST MOTES ============ */
+function GlowDust({ count = 80 }) {
+  const meshRef = useRef()
+
+  const { positions, colors, sizes } = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    const col = new Float32Array(count * 3)
+    const sz = new Float32Array(count)
+    const c1 = new THREE.Color('#fabd2f')
+    const c2 = new THREE.Color('#ff6b6b')
+    const c3 = new THREE.Color('#667eea')
+
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 50
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 30
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 30
+
+      const r = Math.random()
+      const color = r < 0.4 ? c1 : r < 0.7 ? c2 : c3
+      col[i * 3] = color.r
+      col[i * 3 + 1] = color.g
+      col[i * 3 + 2] = color.b
+
+      sz[i] = 0.05 + Math.random() * 0.15
+    }
+    return { positions: pos, colors: col, sizes: sz }
+  }, [count])
+
+  useFrame((state) => {
+    if (!meshRef.current) return
+    const t = state.clock.elapsedTime
+    meshRef.current.rotation.y = t * 0.005
+    meshRef.current.rotation.x = Math.sin(t * 0.01) * 0.02
+  })
+
+  return (
+    <points ref={meshRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-color" count={count} array={colors} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial size={0.12} vertexColors transparent opacity={0.6} sizeAttenuation blending={THREE.AdditiveBlending} />
+    </points>
+  )
+}
+
 /* ============ MAIN SCENE ============ */
-function Scene({ scrollProgress }) {
+function Scene({ scrollProgress, scrollVelocity }) {
   return (
     <>
       <CameraController scrollProgress={scrollProgress} />
@@ -593,16 +913,22 @@ function Scene({ scrollProgress }) {
       <directionalLight position={[5, 3, 5]} intensity={1.8} color="#ffffff" />
       <pointLight position={[-5, -3, 5]} intensity={0.6} color="#667eea" />
       <pointLight position={[3, 5, -3]} intensity={0.4} color="#fabd2f" />
-      <Stars radius={80} depth={60} count={1500} factor={3} fade speed={0.4} />
+      <pointLight position={[-8, 2, -5]} intensity={0.3} color="#ff6b6b" />
+      <Stars radius={80} depth={60} count={2500} factor={3} fade speed={0.4} />
       <ParticleField scrollProgress={scrollProgress} />
+      <NebulaBG scrollProgress={scrollProgress} />
+      <GlowDust />
+      <ShootingStars />
+      <FloatingDebris scrollProgress={scrollProgress} />
       <Suspense fallback={<LoadingFallback />}>
-        <AsteroidModel scrollProgress={scrollProgress} />
+        <AsteroidModel scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
         <RacingCarModel scrollProgress={scrollProgress} />
         <Class12Books scrollProgress={scrollProgress} />
         <ProjectModels scrollProgress={scrollProgress} />
       </Suspense>
       <OrbitRing radius={5} tilt={2.5} scrollProgress={scrollProgress} />
       <OrbitRing radius={6} tilt={3.5} scrollProgress={scrollProgress} />
+      <OrbitRing radius={9} tilt={1.8} scrollProgress={scrollProgress} />
     </>
   )
 }
@@ -611,6 +937,9 @@ function Scene({ scrollProgress }) {
 export default function IntroScene({ onComplete }) {
   const containerRef = useRef()
   const [scrollProgress, setScrollProgress] = useState(0)
+  const [scrollVelocity, setScrollVelocity] = useState(0)
+  const lastProgressRef = useRef(0)
+  const velocityDecayRef = useRef(null)
   const [showHint, setShowHint] = useState(true)
   const [introComplete, setIntroComplete] = useState(false)
 
@@ -640,7 +969,12 @@ export default function IntroScene({ onComplete }) {
       const totalHeight = containerRef.current.scrollHeight - window.innerHeight
       const scrolled = -rect.top
       const progress = Math.max(0, Math.min(1, scrolled / totalHeight))
+      const velocity = Math.abs(progress - lastProgressRef.current) * 60
+      lastProgressRef.current = progress
       setScrollProgress(progress)
+      setScrollVelocity(Math.min(velocity * 5, 1))
+      clearTimeout(velocityDecayRef.current)
+      velocityDecayRef.current = setTimeout(() => setScrollVelocity(0), 150)
 
       if (progress > 0.05) setShowHint(false)
       else setShowHint(true)
@@ -675,9 +1009,10 @@ export default function IntroScene({ onComplete }) {
 
   return (
     <div className="intro-container" ref={containerRef}>
+      <LoadingScreen />
       <div className={`intro-canvas-wrapper ${introComplete ? 'fade-out' : ''}`}>
         <Canvas camera={{ position: [0, 0, 8], fov: 50 }} dpr={[1, 2]}>
-          <Scene scrollProgress={scrollProgress} />
+          <Scene scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
         </Canvas>
       </div>
 

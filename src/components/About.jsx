@@ -92,11 +92,11 @@ function FaceBackground() {
 
         groupRef.current.rotation.y += 0.003
         groupRef.current.rotation.x = Math.sin(t * 0.2) * 0.05
-        groupRef.current.position.y = 0.5 + Math.sin(t * 0.3) * 0.1
+        groupRef.current.position.y = Math.sin(t * 0.3) * 0.05
 
-        // Periodic glitch bursts (active ~40% of the time, stronger)
-        const glitchCycle = Math.sin(t * 0.8) * Math.sin(t * 1.3)
-        const intensity = glitchCycle > 0.3 ? (glitchCycle - 0.3) * 3.0 : 0.0
+        // Periodic glitch bursts (high frequency, nearly always active)
+        const glitchCycle = Math.sin(t * 2.5) * Math.sin(t * 3.7)
+        const intensity = glitchCycle > 0.0 ? glitchCycle * 2.5 : 0.0
 
         materialsRef.current.forEach((mat) => {
             if (mat.userData.shader) {
@@ -107,8 +107,8 @@ function FaceBackground() {
     })
 
     return (
-        <group ref={groupRef} position={[0, 0.5, 0]}>
-            <primitive object={clonedScene} scale={1.8} />
+        <group ref={groupRef} position={[0, 0, 0]}>
+            <primitive object={clonedScene} scale={2.8} />
         </group>
     )
 }
@@ -147,53 +147,58 @@ export default function About() {
 
     return (
         <section className="section" id="about" ref={sectionRef}>
-            <div className="section-header reveal">
-                <p className="section-label">About</p>
-                <h2 className="section-title">Who I Am</h2>
-                <div className="section-divider" />
-            </div>
+            <div className="about-layout">
+                <div className="about-left">
+                    <div className="section-header reveal">
+                        <p className="section-label">About</p>
+                        <h2 className="section-title">Who I Am</h2>
+                        <div className="section-divider" />
+                    </div>
 
-            <div className="about-grid">
-                <div className="about-text reveal">
-                    <p>
-                        I&apos;m <strong>Abhay Raj</strong>, an open source enthusiast and <strong>FOSS developer</strong>,
-                        passionate about community-driven development and making software accessible for everyone.
-                    </p>
-                    <p>
-                        From crafting immersive game worlds in Unity to building powerful Android tools like
-                        <strong> FluxLinux</strong> (GPU-accelerated Linux on mobile) and <strong>FinalBenchmark</strong>
-                        (comprehensive CPU benchmarking), I love pushing the boundaries of what&apos;s possible on every platform.
-                    </p>
-                    <p>
-                        I believe in building in public, contributing to the open source ecosystem, and creating tools that
-                        empower developers worldwide.
-                    </p>
+                    <div className="about-text reveal">
+                        <p>
+                            I&apos;m <strong>Abhay Raj</strong>, an open source enthusiast and <strong>FOSS developer</strong>,
+                            passionate about community-driven development and making software accessible for everyone.
+                        </p>
+                        <p>
+                            From crafting immersive game worlds in Unity to building powerful Android tools like
+                            <strong> FluxLinux</strong> (GPU-accelerated Linux on mobile) and <strong>FinalBenchmark</strong>
+                            (comprehensive CPU benchmarking), I love pushing the boundaries of what&apos;s possible on every platform.
+                        </p>
+                        <p>
+                            I believe in building in public, contributing to the open source ecosystem, and creating tools that
+                            empower developers worldwide.
+                        </p>
 
-                    <div className="about-stats">
-                        {stats.map((s, i) => (
-                            <div className="stat-card" key={i}>
-                                <div className="stat-number">{s.number}</div>
-                                <div className="stat-label">{s.label}</div>
-                            </div>
-                        ))}
+                        <div className="about-stats">
+                            {stats.map((s, i) => (
+                                <div className="stat-card" key={i}>
+                                    <div className="stat-number">{s.number}</div>
+                                    <div className="stat-label">{s.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="reveal">
+                        <p className="section-label" style={{ marginBottom: 16 }}>Tech Stack</p>
+                        <div className="skills-grid">
+                            {skills.map((skill, i) => (
+                                <span className="skill-tag" key={i}>{skill}</span>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                <div className="reveal">
+                <div className="about-right reveal">
                     <div className="about-canvas">
-                        <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={1}>
+                        <Canvas camera={{ position: [0, 1.5, 7], fov: 45 }} dpr={1}>
                             <ambientLight intensity={0.6} />
                             <directionalLight position={[3, 3, 5]} intensity={1.0} color="#ffffff" />
                             <Suspense fallback={<FaceFallback />}>
                                 <FaceBackground />
                             </Suspense>
                         </Canvas>
-                    </div>
-                    <p className="section-label" style={{ marginBottom: 16 }}>Tech Stack</p>
-                    <div className="skills-grid">
-                        {skills.map((skill, i) => (
-                            <span className="skill-tag" key={i}>{skill}</span>
-                        ))}
                     </div>
                 </div>
             </div>

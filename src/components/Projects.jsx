@@ -119,6 +119,7 @@ const projects = [
 
 export default function Projects() {
     const sectionRef = useRef()
+    const [visibleCards, setVisibleCards] = useState(new Set())
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -134,6 +135,24 @@ export default function Projects() {
         return () => reveals?.forEach(el => observer.unobserve(el))
     }, [])
 
+    // Lazy-render cards: only mount cards near the viewport
+    useEffect(() => {
+        const cardObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        const idx = Number(e.target.dataset.idx)
+                        setVisibleCards(prev => new Set([...prev, idx]))
+                    }
+                })
+            },
+            { rootMargin: '200px 0px' }
+        )
+        const placeholders = sectionRef.current?.querySelectorAll('.project-card-placeholder')
+        placeholders?.forEach(el => cardObserver.observe(el))
+        return () => placeholders?.forEach(el => cardObserver.unobserve(el))
+    }, [])
+
     return (
         <section className="section" id="projects" ref={sectionRef}>
             <div className="section-header reveal">
@@ -145,43 +164,48 @@ export default function Projects() {
             <div className="projects-grid">
                 {projects.map((project, i) => (
                     <div
-                        className="project-card reveal"
+                        className={`project-card reveal project-card-placeholder`}
                         key={i}
-                        style={{ transitionDelay: `${i * 0.08}s` }}
+                        data-idx={i}
+                        style={{ transitionDelay: `${Math.min(i, 3) * 0.08}s`, minHeight: '280px' }}
                     >
-                        {project.screenshot && (
-                            <div className="project-screenshot">
-                                <img src={project.screenshot} alt={`${project.title} screenshot`} loading="lazy" />
-                            </div>
+                        {visibleCards.has(i) && (
+                            <>
+                                {project.screenshot && (
+                                    <div className="project-screenshot">
+                                        <img src={project.screenshot} alt={`${project.title} screenshot`} loading="lazy" />
+                                    </div>
+                                )}
+                                <div className="project-card-header">
+                                    <div className="project-icon" style={{ background: project.iconBg }}>
+                                        {project.iconImg ? (
+                                            <img src={project.iconImg} alt={project.title} />
+                                        ) : (
+                                            project.icon
+                                        )}
+                                    </div>
+                                    <h3>{project.title}</h3>
+                                </div>
+                                <div className="project-card-body">
+                                    <p>{project.description}</p>
+                                    <div className="project-tags">
+                                        {project.tags.map((tag, j) => (
+                                            <span className="project-tag" key={j}>{tag}</span>
+                                        ))}
+                                    </div>
+                                    <div className="project-links">
+                                        <a href={project.github} className="project-link" target="_blank" rel="noopener noreferrer">
+                                            <GitHubIcon /> GitHub
+                                        </a>
+                                        {project.live && (
+                                            <a href={project.live} className="project-link" target="_blank" rel="noopener noreferrer">
+                                                <ExternalIcon /> Live Demo
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
                         )}
-                        <div className="project-card-header">
-                            <div className="project-icon" style={{ background: project.iconBg }}>
-                                {project.iconImg ? (
-                                    <img src={project.iconImg} alt={project.title} />
-                                ) : (
-                                    project.icon
-                                )}
-                            </div>
-                            <h3>{project.title}</h3>
-                        </div>
-                        <div className="project-card-body">
-                            <p>{project.description}</p>
-                            <div className="project-tags">
-                                {project.tags.map((tag, j) => (
-                                    <span className="project-tag" key={j}>{tag}</span>
-                                ))}
-                            </div>
-                            <div className="project-links">
-                                <a href={project.github} className="project-link" target="_blank" rel="noopener noreferrer">
-                                    <GitHubIcon /> GitHub
-                                </a>
-                                {project.live && (
-                                    <a href={project.live} className="project-link" target="_blank" rel="noopener noreferrer">
-                                        <ExternalIcon /> Live Demo
-                                    </a>
-                                )}
-                            </div>
-                        </div>
                     </div>
                 ))}
             </div>

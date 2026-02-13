@@ -16,18 +16,93 @@ const stats = [
     { number: '∞', label: 'Curiosity' },
 ]
 
-/* ============ 3D FACE MODEL (rotating background) ============ */
+/* ============ 3D FACE MODEL (with glitch shader) ============ */
 function FaceBackground() {
     const { scene } = useGLTF('/models/hitem3d.glb')
     const groupRef = useRef()
-    const clonedScene = useMemo(() => scene.clone(true), [scene])
+    const materialsRef = useRef([])
+
+    const clonedScene = useMemo(() => {
+        const c = scene.clone(true)
+        const mats = []
+        c.traverse((child) => {
+            if (child.isMesh && child.material) {
+                const mat = child.material.clone()
+                mat.userData.shader = null
+                mat.onBeforeCompile = (shader) => {
+                    shader.uniforms.uTime = { value: 0 }
+                    shader.uniforms.uGlitchIntensity = { value: 0.0 }
+
+                    // Inject uniform declarations
+                    shader.vertexShader = shader.vertexShader.replace(
+                        '#include <common>',
+                        `#include <common>
+                        uniform float uTime;
+                        uniform float uGlitchIntensity;`
+                    )
+
+                    // Vertex glitch: horizontal slice displacement
+                    shader.vertexShader = shader.vertexShader.replace(
+                        '#include <begin_vertex>',
+                        `#include <begin_vertex>
+                        float glitchSlice = step(0.97, fract(sin(floor(transformed.y * 8.0 + uTime * 3.0) * 43758.5453))) * uGlitchIntensity;
+                        transformed.x += glitchSlice * 0.3;
+                        transformed.z += glitchSlice * 0.1;`
+                    )
+
+                    // Fragment: RGB split + scanlines
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        '#include <common>',
+                        `#include <common>
+                        uniform float uTime;
+                        uniform float uGlitchIntensity;`
+                    )
+
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        '#include <dithering_fragment>',
+                        `#include <dithering_fragment>
+                        // RGB split
+                        float rgbShift = uGlitchIntensity * 0.015;
+                        gl_FragColor.r = gl_FragColor.r + rgbShift * sin(uTime * 20.0 + gl_FragCoord.y * 0.1);
+                        gl_FragColor.b = gl_FragColor.b - rgbShift * cos(uTime * 15.0 + gl_FragCoord.y * 0.15);
+
+                        // Scanlines
+                        float scanline = sin(gl_FragCoord.y * 1.5 + uTime * 5.0) * 0.03 * uGlitchIntensity;
+                        gl_FragColor.rgb -= scanline;
+
+                        // Occasional flash
+                        float flash = step(0.995, fract(sin(uTime * 1.7) * 43758.5453)) * uGlitchIntensity * 0.15;
+                        gl_FragColor.rgb += flash;`
+                    )
+
+                    mat.userData.shader = shader
+                }
+                child.material = mat
+                mats.push(mat)
+            }
+        })
+        materialsRef.current = mats
+        return c
+    }, [scene])
 
     useFrame((state) => {
-        if (groupRef.current) {
-            groupRef.current.rotation.y += 0.003
-            groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.05
-            groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.1
-        }
+        if (!groupRef.current) return
+        const t = state.clock.elapsedTime
+
+        groupRef.current.rotation.y += 0.003
+        groupRef.current.rotation.x = Math.sin(t * 0.2) * 0.05
+        groupRef.current.position.y = 0.5 + Math.sin(t * 0.3) * 0.1
+
+        // Periodic glitch bursts (active ~20% of the time)
+        const glitchCycle = Math.sin(t * 0.8) * Math.sin(t * 1.3)
+        const intensity = glitchCycle > 0.6 ? (glitchCycle - 0.6) * 2.5 : 0.0
+
+        materialsRef.current.forEach((mat) => {
+            if (mat.userData.shader) {
+                mat.userData.shader.uniforms.uTime.value = t
+                mat.userData.shader.uniforms.uGlitchIntensity.value = intensity
+            }
+        })
     })
 
     return (

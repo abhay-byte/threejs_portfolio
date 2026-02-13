@@ -30,6 +30,7 @@ html {
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) var(--bg-primary);
+  scroll-snap-type: y mandatory;
 }
 
 body {
@@ -85,6 +86,7 @@ main {
   position: relative;
   z-index: 3;
   background: var(--bg-primary);
+  scroll-snap-align: start;
 }
 
 .intro-scroll-content {
@@ -266,6 +268,7 @@ main {
   padding: 120px 40px 80px;
   position: relative;
   overflow: hidden;
+  scroll-snap-align: start;
 }
 
 .hero-bg-glow {
@@ -381,6 +384,8 @@ main {
   margin: 0 auto;
   position: relative;
   overflow: hidden;
+  scroll-snap-align: start;
+  min-height: 100vh;
 }
 
 .about-canvas {

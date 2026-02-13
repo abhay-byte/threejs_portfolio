@@ -31,7 +31,7 @@ function FaceBackground() {
     })
 
     return (
-        <group ref={groupRef} position={[0, 0, 0]}>
+        <group ref={groupRef} position={[0, 0.5, 0]}>
             <primitive object={clonedScene} scale={1.8} />
         </group>
     )

@@ -30,7 +30,6 @@ html {
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--accent) var(--bg-primary);
-  scroll-snap-type: y proximity;
 }
 
 body {
@@ -169,7 +168,6 @@ main {
   position: relative;
   z-index: 3;
   background: var(--bg-primary);
-  scroll-snap-align: start;
 }
 
 .intro-scroll-content {
@@ -179,11 +177,11 @@ main {
 }
 
 .intro-slide {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10%;
+  padding: 60px 10%;
 }
 
 .intro-text-block {
@@ -228,6 +226,292 @@ main {
   line-height: 1.7;
   font-weight: 300;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.6);
+}
+
+/* ========== TIMELINE JOURNEY ========== */
+.intro-text-block {
+  position: relative;
+  z-index: 5;
+}
+
+.timeline-dot {
+  position: absolute;
+  top: -18px;
+  left: -40px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg-primary);
+  box-shadow: 0 0 16px var(--accent-glow), 0 0 6px var(--accent);
+  z-index: 6;
+}
+
+.timeline-line {
+  position: absolute;
+  top: 0;
+  left: calc(50% - 380px);
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, var(--accent) 10%, var(--accent) 90%, transparent);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.timeline-year {
+  display: block;
+  width: fit-content;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--accent);
+  background: rgba(250, 189, 47, 0.1);
+  border: 1px solid rgba(250, 189, 47, 0.25);
+  border-radius: 50px;
+  padding: 4px 14px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+/* ========== CHAPTER PROJECT CARDS ========== */
+.chapter-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+  width: 100%;
+}
+
+.chapter-project-card {
+  display: flex;
+  flex-direction: row;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  color: var(--text-primary);
+  transition: all 0.35s ease;
+  width: 100%;
+  min-height: 90px;
+}
+
+.chapter-project-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(250, 189, 47, 0.12);
+  background: rgba(250, 189, 47, 0.04);
+}
+
+.chapter-project-screenshot {
+  width: 140px;
+  min-height: 90px;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.chapter-project-screenshot img,
+.chapter-project-screenshot video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.chapter-project-card:hover .chapter-project-screenshot img,
+.chapter-project-card:hover .chapter-project-screenshot video {
+  transform: scale(1.08);
+}
+
+.chapter-project-screenshot::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to left, rgba(10, 10, 10, 0.85), transparent);
+  pointer-events: none;
+}
+
+.chapter-project-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 16px;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.chapter-project-year {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  opacity: 0.7;
+  text-transform: uppercase;
+  text-align: left;
+  align-self: flex-start;
+}
+
+.chapter-project-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chapter-project-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chapter-project-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.chapter-project-title {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-project-card:hover .chapter-project-title {
+  color: var(--accent);
+}
+
+/* ---- Link Buttons ---- */
+.chapter-project-links {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.chapter-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  letter-spacing: 0.3px;
+}
+
+.chapter-link-github {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chapter-link-github:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.chapter-link-live {
+  background: rgba(250, 189, 47, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(250, 189, 47, 0.25);
+}
+
+.chapter-link-live:hover {
+  background: rgba(250, 189, 47, 0.2);
+  box-shadow: 0 0 12px rgba(250, 189, 47, 0.15);
+}
+
+.chapter-link-btn svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .chapter-projects {
+    gap: 10px;
+  }
+
+  .chapter-project-card {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .chapter-project-screenshot {
+    width: 100%;
+    height: 80px;
+    min-height: auto;
+  }
+
+  .chapter-project-screenshot::after {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 24px;
+    background: linear-gradient(transparent, rgba(10, 10, 10, 0.85));
+  }
+
+  .timeline-line {
+    display: none;
+  }
+
+  .chapter-project-body {
+    padding: 10px 12px;
+  }
+
+  .chapter-project-icon {
+    width: 26px;
+    height: 26px;
+    font-size: 1rem;
+  }
+
+  .chapter-project-title {
+    font-size: 0.75rem;
+  }
+
+  .chapter-link-btn {
+    font-size: 0.58rem;
+    padding: 3px 8px;
+  }
+
+  .timeline-dot {
+    width: 10px;
+    height: 10px;
+    top: -14px;
+  }
+
+  .timeline-connector {
+    top: -14px;
+  }
+
+  .timeline-year {
+    font-size: 0.65rem;
+    padding: 3px 10px;
+  }
 }
 
 .intro-scroll-hint {
@@ -359,7 +643,6 @@ main {
   padding: 120px 40px 80px;
   position: relative;
   overflow: hidden;
-  scroll-snap-align: start;
 }
 
 .hero-bg-glow {
@@ -475,7 +758,6 @@ main {
   margin: 0 auto;
   position: relative;
   overflow: hidden;
-  scroll-snap-align: start;
   min-height: 100vh;
 }
 
@@ -663,14 +945,16 @@ main {
   position: relative;
 }
 
-.project-screenshot img {
+.project-screenshot img,
+.project-screenshot video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;
 }
 
-.project-card:hover .project-screenshot img {
+.project-card:hover .project-screenshot img,
+.project-card:hover .project-screenshot video {
   transform: scale(1.05);
 }
 

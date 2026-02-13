@@ -23,6 +23,7 @@ const projects = [
         tags: ['Android', 'Kotlin', 'Linux', 'Shell'],
         github: 'https://github.com/abhay-byte/fluxlinux',
         live: 'https://f-droid.org/packages/com.ivarna.fluxlinux',
+        video: '/videos/fluxlinux.mp4',
         screenshot: '/images/fluxlinux-screenshot.png'
     },
     {
@@ -73,6 +74,7 @@ const projects = [
         tags: ['Unity', 'C#', 'Game Dev'],
         github: 'https://github.com/abhay-byte/planet-racing',
         live: null,
+        video: '/1.mp4',
         screenshot: '/images/fantasy-racing.png'
     },
     {
@@ -83,6 +85,7 @@ const projects = [
         tags: ['Unity', 'C#', 'RPG', 'Game Dev'],
         github: 'https://github.com/abhay-byte/Saiko-no-senshi-0.1v',
         live: 'https://hind-dev.web.app/#/',
+        video: '/videos/xirsia.mp4',
         screenshot: null
     },
     {
@@ -93,6 +96,7 @@ const projects = [
         tags: ['Unity', 'C#', 'Horror', 'Game Dev'],
         github: 'https://github.com/abhay-byte/valentines-day-unity',
         live: null,
+        video: '/videos/whispers1.mp4',
         screenshot: null
     },
     {
@@ -171,9 +175,13 @@ export default function Projects() {
                     >
                         {visibleCards.has(i) && (
                             <>
-                                {project.screenshot && (
+                                {(project.video || project.screenshot) && (
                                     <div className="project-screenshot">
-                                        <img src={project.screenshot} alt={`${project.title} screenshot`} loading="lazy" />
+                                        {project.video ? (
+                                            <video src={project.video} autoPlay loop muted playsInline />
+                                        ) : (
+                                            <img src={project.screenshot} alt={`${project.title} screenshot`} loading="lazy" />
+                                        )}
                                     </div>
                                 )}
                                 <div className="project-card-header">

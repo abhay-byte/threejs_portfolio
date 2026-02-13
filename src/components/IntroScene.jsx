@@ -114,7 +114,350 @@ const MotionGlowMaterial = shaderMaterial(
    }`
 )
 
-extend({ WireframeGlowMaterial, HologramMaterial, EmissiveBloomMaterial, MotionGlowMaterial })
+/* ============ BACKGROUND PLANET SHADERS ============ */
+
+/* Aurora / Iridescent planet — oil-slick rainbow shimmer */
+const AuroraPlanetMaterial = shaderMaterial(
+  { uTime: 0 },
+  `varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   void main() {
+     vNormal = normalize(normalMatrix * normal);
+     vPosition = position;
+     vec4 wp = modelMatrix * vec4(position, 1.0);
+     vViewDir = normalize(cameraPosition - wp.xyz);
+     gl_Position = projectionMatrix * viewMatrix * wp;
+   }`,
+  `uniform float uTime;
+   varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   void main() {
+     vec3 n = normalize(vNormal);
+     vec3 v = normalize(vViewDir);
+     float fresnel = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+     float angle = atan(vPosition.z, vPosition.x);
+     float wave = sin(angle * 3.0 + vPosition.y * 4.0 + uTime * 0.8) * 0.5 + 0.5;
+     float wave2 = sin(angle * 5.0 - vPosition.y * 2.0 + uTime * 1.2) * 0.5 + 0.5;
+     vec3 c1 = vec3(0.4, 0.1, 0.8);
+     vec3 c2 = vec3(0.1, 0.8, 0.6);
+     vec3 c3 = vec3(0.9, 0.3, 0.5);
+     vec3 color = mix(c1, c2, wave);
+     color = mix(color, c3, wave2 * fresnel);
+     color += vec3(1.0, 0.9, 0.7) * fresnel * 0.5;
+     gl_FragColor = vec4(color, 0.85);
+   }`
+)
+
+/* Lava / Magma planet — glowing cracks of molten fire */
+const LavaPlanetMaterial = shaderMaterial(
+  { uTime: 0 },
+  `varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   void main() {
+     vNormal = normalize(normalMatrix * normal);
+     vPosition = position;
+     vec4 wp = modelMatrix * vec4(position, 1.0);
+     vViewDir = normalize(cameraPosition - wp.xyz);
+     gl_Position = projectionMatrix * viewMatrix * wp;
+   }`,
+  `uniform float uTime;
+   varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+   float noise2d(vec2 p) {
+     vec2 i = floor(p); vec2 f = fract(p);
+     f = f*f*(3.0-2.0*f);
+     return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+   }
+   void main() {
+     vec3 n = normalize(vNormal);
+     vec3 v = normalize(vViewDir);
+     float fresnel = pow(1.0 - max(dot(n, v), 0.0), 2.5);
+     vec2 uv = vPosition.xy * 3.0;
+     float n1 = noise2d(uv + uTime * 0.1);
+     float n2 = noise2d(uv * 2.0 - uTime * 0.15);
+     float cracks = smoothstep(0.45, 0.55, n1 * n2);
+     vec3 darkRock = vec3(0.08, 0.05, 0.03);
+     vec3 lavaOrange = vec3(1.0, 0.4, 0.0);
+     vec3 lavaYellow = vec3(1.0, 0.8, 0.2);
+     vec3 lava = mix(lavaOrange, lavaYellow, n2);
+     vec3 color = mix(darkRock, lava, cracks);
+     color += vec3(1.0, 0.5, 0.1) * fresnel * 0.6;
+     gl_FragColor = vec4(color, 1.0);
+   }`
+)
+
+/* Ice Crystal planet — cool frozen blues with icy refraction */
+const IcePlanetMaterial = shaderMaterial(
+  { uTime: 0 },
+  `varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   void main() {
+     vNormal = normalize(normalMatrix * normal);
+     vPosition = position;
+     vec4 wp = modelMatrix * vec4(position, 1.0);
+     vViewDir = normalize(cameraPosition - wp.xyz);
+     gl_Position = projectionMatrix * viewMatrix * wp;
+   }`,
+  `uniform float uTime;
+   varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   void main() {
+     vec3 n = normalize(vNormal);
+     vec3 v = normalize(vViewDir);
+     float fresnel = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+     float facets = sin(vPosition.x * 12.0) * sin(vPosition.y * 14.0) * sin(vPosition.z * 10.0);
+     facets = abs(facets);
+     vec3 deepBlue = vec3(0.05, 0.15, 0.35);
+     vec3 iceBlue = vec3(0.4, 0.7, 0.95);
+     vec3 white = vec3(0.9, 0.95, 1.0);
+     vec3 color = mix(deepBlue, iceBlue, facets);
+     color = mix(color, white, fresnel * 0.8);
+     float sparkle = pow(sin(vPosition.x * 30.0 + uTime) * sin(vPosition.y * 30.0 - uTime * 0.7), 8.0);
+     color += vec3(0.8, 0.9, 1.0) * sparkle * 0.4;
+     gl_FragColor = vec4(color, 0.9);
+   }`
+)
+
+/* ============ SUN SHADER ============ */
+const SunMaterial = shaderMaterial(
+  { uTime: 0 },
+  `varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   void main() {
+     vNormal = normalize(normalMatrix * normal);
+     vPosition = position;
+     vec4 wp = modelMatrix * vec4(position, 1.0);
+     vViewDir = normalize(cameraPosition - wp.xyz);
+     gl_Position = projectionMatrix * viewMatrix * wp;
+   }`,
+  `uniform float uTime;
+   varying vec3 vNormal; varying vec3 vPosition; varying vec3 vViewDir;
+   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+   float noise2d(vec2 p) {
+     vec2 i = floor(p); vec2 f = fract(p);
+     f = f*f*(3.0-2.0*f);
+     return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+   }
+   float fbm(vec2 p) {
+     float v = 0.0; float a = 0.5;
+     for(int i = 0; i < 5; i++) { v += a * noise2d(p); p *= 2.0; a *= 0.5; }
+     return v;
+   }
+   void main() {
+     vec3 n = normalize(vNormal);
+     vec3 v = normalize(vViewDir);
+     float fresnel = pow(1.0 - max(dot(n, v), 0.0), 2.0);
+     vec2 uv = vPosition.xy * 2.0;
+     float turbulence = fbm(uv + uTime * 0.15);
+     float turbulence2 = fbm(uv * 1.5 - uTime * 0.2 + 3.0);
+     float spots = smoothstep(0.55, 0.6, turbulence * turbulence2);
+     vec3 sunCore = vec3(1.0, 0.95, 0.7);
+     vec3 sunMid = vec3(1.0, 0.6, 0.1);
+     vec3 sunEdge = vec3(0.9, 0.2, 0.05);
+     vec3 color = mix(sunCore, sunMid, turbulence);
+     color = mix(color, sunEdge, fresnel * 0.7);
+     color -= spots * vec3(0.3, 0.2, 0.1);
+     float pulse = sin(uTime * 1.5) * 0.1 + 1.0;
+     color *= pulse;
+     color += vec3(1.0, 0.8, 0.3) * fresnel * 0.8;
+     gl_FragColor = vec4(color, 1.0);
+   }`
+)
+
+/* Solar flare / corona glow material */
+const SunCoronaMaterial = shaderMaterial(
+  { uTime: 0 },
+  `varying vec2 vUv;
+   void main() { vUv = uv;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  `uniform float uTime; varying vec2 vUv;
+   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+   float noise2d(vec2 p) {
+     vec2 i = floor(p); vec2 f = fract(p);
+     f = f*f*(3.0-2.0*f);
+     return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+   }
+   void main() {
+     vec2 center = vUv - 0.5;
+     float dist = length(center);
+     float angle = atan(center.y, center.x);
+     float flare = noise2d(vec2(angle * 3.0, uTime * 0.5)) * 0.15;
+     float corona = smoothstep(0.5, 0.2, dist + flare);
+     float outerGlow = smoothstep(0.5, 0.0, dist) * 0.3;
+     float rays = pow(abs(sin(angle * 8.0 + uTime * 0.8)), 8.0) * smoothstep(0.25, 0.45, dist) * 0.4;
+     vec3 coreColor = vec3(1.0, 0.9, 0.6);
+     vec3 edgeColor = vec3(1.0, 0.4, 0.05);
+     vec3 color = mix(edgeColor, coreColor, corona);
+     float alpha = (corona * 0.6 + outerGlow + rays) * smoothstep(0.52, 0.48, dist);
+     gl_FragColor = vec4(color, alpha);
+   }`
+)
+
+extend({
+  WireframeGlowMaterial, HologramMaterial, EmissiveBloomMaterial, MotionGlowMaterial,
+  AuroraPlanetMaterial, LavaPlanetMaterial, IcePlanetMaterial,
+  SunMaterial, SunCoronaMaterial
+})
+
+/* ============ BACKGROUND PLANETS ============ */
+const BG_PLANETS = [
+  // Aurora planets — far background with iridescent shimmer
+  { pos: [-18, 8, -35], scale: 2.5, shader: 'aurora', rotSpeed: 0.002, glow: '#8b5cf6', glowIntensity: 2, orbitRadius: 3, orbitSpeed: 0.08, orbitAxis: 'xz' },
+  { pos: [22, -6, -40], scale: 1.8, shader: 'aurora', rotSpeed: -0.003, glow: '#06d6a0', glowIntensity: 1.5, orbitRadius: 2.5, orbitSpeed: -0.06, orbitAxis: 'xz' },
+  // Lava planets — mid-distance with orange glow
+  { pos: [-14, -10, -25], scale: 1.2, shader: 'lava', rotSpeed: 0.004, glow: '#ff6b35', glowIntensity: 3, orbitRadius: 2, orbitSpeed: 0.1, orbitAxis: 'xy' },
+  { pos: [16, 12, -30], scale: 0.9, shader: 'lava', rotSpeed: -0.002, glow: '#fabd2f', glowIntensity: 2, orbitRadius: 1.5, orbitSpeed: -0.07, orbitAxis: 'xz' },
+  // Ice planets — subtle background with cool glow
+  { pos: [25, 3, -45], scale: 1.6, shader: 'ice', rotSpeed: 0.001, glow: '#4cc9f0', glowIntensity: 1.8, orbitRadius: 3, orbitSpeed: 0.05, orbitAxis: 'yz' },
+  { pos: [-22, -4, -50], scale: 2.0, shader: 'ice', rotSpeed: -0.0015, glow: '#7209b7', glowIntensity: 1.5, orbitRadius: 2, orbitSpeed: -0.04, orbitAxis: 'xz' },
+  // Gas giant — large swirling aurora in deep background
+  { pos: [35, -12, -55], scale: 3.2, shader: 'aurora', rotSpeed: 0.001, glow: '#e040fb', glowIntensity: 2.5, orbitRadius: 4, orbitSpeed: 0.03, orbitAxis: 'xz' },
+  // Tiny lava moon — fast orbiting
+  { pos: [-30, 14, -38], scale: 0.7, shader: 'lava', rotSpeed: 0.008, glow: '#ff9800', glowIntensity: 3.5, orbitRadius: 5, orbitSpeed: 0.15, orbitAxis: 'xy' },
+  // Crystal ice dwarf — far right
+  { pos: [40, 8, -60], scale: 1.0, shader: 'ice', rotSpeed: 0.003, glow: '#00e5ff', glowIntensity: 2, orbitRadius: 2, orbitSpeed: -0.09, orbitAxis: 'yz' },
+  // Storm aurora — dramatic top-left
+  { pos: [-35, 18, -48], scale: 1.4, shader: 'aurora', rotSpeed: -0.005, glow: '#76ff03', glowIntensity: 2, orbitRadius: 3, orbitSpeed: 0.07, orbitAxis: 'xz' },
+]
+
+function BackgroundPlanet({ config }) {
+  const { scene } = useGLTF('/models/Planet1.glb')
+  const ref = useRef()
+  const matRef = useRef()
+  const cloned = useMemo(() => scene.clone(true), [scene])
+
+  useFrame((state) => {
+    if (!ref.current) return
+    const t = state.clock.elapsedTime
+    ref.current.rotation.y += config.rotSpeed
+
+    // Orbital motion around home position
+    const oR = config.orbitRadius || 0
+    const oS = config.orbitSpeed || 0
+    const phase = config.pos[0] + config.pos[1] // unique phase per planet
+    if (config.orbitAxis === 'xy') {
+      ref.current.position.x = config.pos[0] + Math.cos(t * oS + phase) * oR
+      ref.current.position.y = config.pos[1] + Math.sin(t * oS + phase) * oR
+      ref.current.position.z = config.pos[2]
+    } else if (config.orbitAxis === 'yz') {
+      ref.current.position.x = config.pos[0]
+      ref.current.position.y = config.pos[1] + Math.cos(t * oS + phase) * oR
+      ref.current.position.z = config.pos[2] + Math.sin(t * oS + phase) * oR
+    } else {
+      ref.current.position.x = config.pos[0] + Math.cos(t * oS + phase) * oR
+      ref.current.position.y = config.pos[1] + Math.sin(t * 0.2 + config.pos[2]) * 0.3
+      ref.current.position.z = config.pos[2] + Math.sin(t * oS + phase) * oR
+    }
+
+    // Subtle scale pulsing
+    const scalePulse = 1.0 + Math.sin(t * 0.5 + phase) * 0.03
+    const s = config.scale * scalePulse
+    ref.current.scale.set(s, s, s)
+
+    if (matRef.current) {
+      matRef.current.uTime = t
+      cloned.traverse((child) => {
+        if (child.isMesh) {
+          child.material = matRef.current
+          child.material.side = THREE.DoubleSide
+        }
+      })
+    }
+  })
+
+  const shaderEl = config.shader === 'aurora'
+    ? <auroraPlanetMaterial ref={matRef} />
+    : config.shader === 'lava'
+      ? <lavaPlanetMaterial ref={matRef} />
+      : <icePlanetMaterial ref={matRef} />
+
+  return (
+    <group ref={ref} position={config.pos} scale={config.scale}>
+      {shaderEl}
+      <primitive object={cloned} />
+      <pointLight color={config.glow} intensity={config.glowIntensity} distance={15} decay={2} />
+    </group>
+  )
+}
+
+function BackgroundPlanets() {
+  return (
+    <>
+      {BG_PLANETS.map((config, i) => (
+        <BackgroundPlanet key={i} config={config} />
+      ))}
+    </>
+  )
+}
+
+/* ============ SUN WITH FLARES ============ */
+function Sun() {
+  const sunRef = useRef()
+  const sunMatRef = useRef()
+  const coronaRef = useRef()
+  const flareRefs = useRef([])
+
+  const flares = useMemo(() => [
+    { angle: 0, scale: 8, speed: 0.3, offset: 0 },
+    { angle: Math.PI * 0.5, scale: 6, speed: 0.4, offset: 1.5 },
+    { angle: Math.PI, scale: 7, speed: 0.25, offset: 3.0 },
+    { angle: Math.PI * 1.5, scale: 5, speed: 0.5, offset: 4.5 },
+    { angle: Math.PI * 0.25, scale: 9, speed: 0.2, offset: 2.0 },
+    { angle: Math.PI * 1.25, scale: 5.5, speed: 0.35, offset: 5.0 },
+  ], [])
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    if (sunRef.current) {
+      sunRef.current.rotation.y += 0.001
+      // Gentle breathing
+      const breathe = 1.0 + Math.sin(t * 0.8) * 0.02
+      sunRef.current.scale.setScalar(4.5 * breathe)
+    }
+    if (sunMatRef.current) sunMatRef.current.uTime = t
+    if (coronaRef.current) coronaRef.current.uTime = t
+
+    // Animate flare planes
+    flareRefs.current.forEach((ref, i) => {
+      if (!ref) return
+      const f = flares[i]
+      const pulse = Math.sin(t * f.speed + f.offset) * 0.5 + 0.5
+      const s = f.scale * (0.7 + pulse * 0.6)
+      ref.scale.set(s, s, 1)
+      ref.rotation.z = f.angle + t * 0.05
+      ref.material.opacity = 0.15 + pulse * 0.25
+    })
+  })
+
+  return (
+    <group position={[30, 15, -60]}>
+      {/* Sun sphere */}
+      <mesh ref={sunRef}>
+        <sphereGeometry args={[1, 64, 64]} />
+        <sunMaterial ref={sunMatRef} />
+      </mesh>
+
+      {/* Corona glow billboard */}
+      <mesh renderOrder={-1}>
+        <planeGeometry args={[20, 20]} />
+        <sunCoronaMaterial ref={coronaRef} transparent depthWrite={false} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+      </mesh>
+
+      {/* Solar flare rays */}
+      {flares.map((f, i) => (
+        <mesh
+          key={i}
+          ref={el => { flareRefs.current[i] = el }}
+          renderOrder={-1}
+        >
+          <planeGeometry args={[1, 0.08]} />
+          <meshBasicMaterial color="#ffcc44" transparent opacity={0.2} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+      ))}
+
+      {/* Intense point light */}
+      <pointLight color="#ffdd77" intensity={8} distance={120} decay={1.5} />
+      <pointLight color="#ff8800" intensity={3} distance={60} decay={2} />
+    </group>
+  )
+}
 
 /* ============ PARTICLE FIELD ============ */
 function ParticleField({ count = 600, scrollProgress }) {
@@ -921,10 +1264,9 @@ function Scene({ scrollProgress, scrollVelocity }) {
       <ShootingStars />
       <FloatingDebris scrollProgress={scrollProgress} />
       <Suspense fallback={<LoadingFallback />}>
-        <AsteroidModel scrollProgress={scrollProgress} scrollVelocity={scrollVelocity} />
         <RacingCarModel scrollProgress={scrollProgress} />
-        <Class12Books scrollProgress={scrollProgress} />
-        <ProjectModels scrollProgress={scrollProgress} />
+        <BackgroundPlanets />
+        <Sun />
       </Suspense>
       <OrbitRing radius={5} tilt={2.5} scrollProgress={scrollProgress} />
       <OrbitRing radius={6} tilt={3.5} scrollProgress={scrollProgress} />
@@ -946,19 +1288,40 @@ export default function IntroScene({ onComplete }) {
   const slides = [
     {
       label: 'Chapter I', title: 'It All Started With Games',
-      text: 'From building 2D RPGs with massive open worlds to crafting futuristic racing experiences — I fell in love with creating digital worlds from scratch.'
+      text: 'From building 2D RPGs with massive open worlds to crafting futuristic racing experiences — I fell in love with creating digital worlds from scratch.',
+      year: '2020–2023',
+      projects: [
+        { iconImg: '/images/xirsia-icon.png', title: 'Story of Xirsia', video: '/videos/xirsia.mp4', screenshot: '/images/xirsia-screenshot.jpg', github: 'https://github.com/abhay-byte/Saiko-no-senshi-0.1v', live: 'https://hind-dev.web.app/#/', year: '2020' },
+        { iconImg: '/images/fantasy-racing-icon.png', title: 'Fantasy Racing', video: '/1.mp4', screenshot: '/images/fantasy-racing.png', github: 'https://github.com/abhay-byte/planet-racing', year: '2023' },
+        { icon: '👻', title: 'Whispers in the Mist', video: '/videos/whispers1.mp4', screenshot: '/images/whispers-in-mist-screenshot.jpg', github: 'https://github.com/abhay-byte/valentines-day-unity', year: '2023' },
+      ]
     },
     {
       label: 'Chapter II', title: 'Then Came the Apps',
-      text: 'I shifted to building Android apps that push boundaries — from GPU-accelerated Linux on mobile to kernel managers and CPU benchmarking tools.'
+      text: 'I shifted to building Android apps that push boundaries — from GPU-accelerated Linux on mobile to kernel managers and CPU benchmarking tools.',
+      year: '2025–2026',
+      projects: [
+        { iconImg: '/images/clinico-icon.png', title: 'Clinico Flutter', screenshot: '/images/clinico-app-screenshot.png', github: 'https://github.com/abhay-byte/clinico-flutter', year: 'Nov 2025' },
+        { iconImg: '/images/finalbenchmark-icon.png', title: 'FinalBenchmark 2', screenshot: '/images/finalbenchmark-screenshot.png', github: 'https://github.com/abhay-byte/finalbenchmark-platform', live: 'https://f-droid.org/packages/com.ivarna.finalbenchmark2', year: 'Nov 2025' },
+        { iconImg: '/images/fluxlinux-icon.webp', title: 'FluxLinux', video: '/videos/fluxlinux.mp4', screenshot: '/images/fluxlinux-screenshot.png', github: 'https://github.com/abhay-byte/fluxlinux', live: 'https://f-droid.org/packages/com.ivarna.fluxlinux', year: 'Dec 2025' },
+        { iconImg: '/images/deviceinsight-icon.webp', title: 'DeviceInsight', screenshot: '/images/deviceinsight-screenshot.png', github: 'https://github.com/abhay-byte/deviceinsight', year: 'Dec 2025' },
+        { iconImg: '/images/mkm-icon.png', title: 'MKM', screenshot: '/images/mkm-screenshot.png', github: 'https://github.com/abhay-byte/mkm', year: 'Jan 2026' },
+      ]
     },
     {
       label: 'Chapter III', title: 'Building for Everyone',
-      text: 'Open source became my north star. Every project I build is for the community — free, transparent, and made to empower developers everywhere.'
+      text: 'Open source became my north star. Every project I build is for the community — free, transparent, and made to empower developers everywhere.',
+      year: '2025–Present',
+      projects: [
+        { icon: '📈', title: 'Investment Growth', screenshot: '/images/investment-growth-screenshot.png', github: 'https://github.com/abhay-byte/AI_WRAPPER_PROJECTS', live: 'https://aiwrapper.streamlit.app', year: 'Mar 2025' },
+        { iconImg: '/images/clinico-icon.png', title: 'Clinico', screenshot: '/images/clinico-screenshot.png', github: 'https://github.com/abhay-byte/minor-project-gtbit', live: 'https://clinicofrontend.onrender.com/', year: 'Sep 2025' },
+      ]
     },
     {
       label: 'Chapter IV', title: 'Welcome to My World',
-      text: 'Scroll down to explore my projects, skills, and everything I\'ve built on this journey.'
+      text: 'Scroll down to explore my projects, skills, and everything I\'ve built on this journey.',
+      year: '',
+      projects: []
     }
   ]
 
@@ -1000,7 +1363,7 @@ export default function IntroScene({ onComplete }) {
           }
         })
       },
-      { threshold: 0.5 }
+      { threshold: 0.1 }
     )
     const blocks = document.querySelectorAll('.intro-text-block')
     blocks.forEach(b => observer.observe(b))
@@ -1017,12 +1380,61 @@ export default function IntroScene({ onComplete }) {
       </div>
 
       <div className="intro-scroll-content">
+        <div className="timeline-line" />
         {slides.map((slide, i) => (
           <div className="intro-slide" key={i}>
             <div className="intro-text-block" style={{ transition: `opacity 0.8s ease ${i * 0.1}s, transform 0.8s ease ${i * 0.1}s` }}>
+              <div className="timeline-dot" />
+              {slide.year && <div className="timeline-year">{slide.year}</div>}
               <div className="intro-label">{slide.label}</div>
               <h2>{slide.title}</h2>
               <p>{slide.text}</p>
+              {slide.projects && slide.projects.length > 0 && (
+                <div className="chapter-projects">
+                  {slide.projects.map((proj, j) => (
+                    <div
+                      key={j}
+                      className="chapter-project-card"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      {(proj.video || proj.screenshot) && (
+                        <div className="chapter-project-screenshot">
+                          {proj.video ? (
+                            <video src={proj.video} autoPlay loop muted playsInline />
+                          ) : (
+                            <img src={proj.screenshot} alt={proj.title} loading="lazy" />
+                          )}
+                        </div>
+                      )}
+                      <div className="chapter-project-body">
+                        {proj.year && <span className="chapter-project-year">{proj.year}</span>}
+                        <div className="chapter-project-info">
+                          <div className="chapter-project-icon">
+                            {proj.iconImg ? (
+                              <img src={proj.iconImg} alt={proj.title} />
+                            ) : (
+                              <span>{proj.icon}</span>
+                            )}
+                          </div>
+                          <span className="chapter-project-title">{proj.title}</span>
+                        </div>
+                        <div className="chapter-project-links">
+                          <a href={proj.github} target="_blank" rel="noopener noreferrer" className="chapter-link-btn chapter-link-github">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
+                            GitHub
+                          </a>
+                          {proj.live && (
+                            <a href={proj.live} target="_blank" rel="noopener noreferrer" className="chapter-link-btn chapter-link-live">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                              Live
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -1045,3 +1457,4 @@ useGLTF.preload('/models/book_physics.glb')
 useGLTF.preload('/models/book_math.glb')
 useGLTF.preload('/models/book_chemistry.glb')
 PROJECT_MODELS.forEach(m => useGLTF.preload(m.path))
+useGLTF.preload('/models/Planet1.glb')

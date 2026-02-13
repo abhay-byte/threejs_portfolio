@@ -45,9 +45,9 @@ function FaceBackground() {
                     shader.vertexShader = shader.vertexShader.replace(
                         '#include <begin_vertex>',
                         `#include <begin_vertex>
-                        float glitchSlice = step(0.97, fract(sin(floor(transformed.y * 8.0 + uTime * 3.0) * 43758.5453))) * uGlitchIntensity;
-                        transformed.x += glitchSlice * 0.3;
-                        transformed.z += glitchSlice * 0.1;`
+                        float glitchSlice = step(0.93, fract(sin(floor(transformed.y * 6.0 + uTime * 4.0) * 43758.5453))) * uGlitchIntensity;
+                        transformed.x += glitchSlice * 0.6;
+                        transformed.z += glitchSlice * 0.2;`
                     )
 
                     // Fragment: RGB split + scanlines
@@ -61,17 +61,18 @@ function FaceBackground() {
                     shader.fragmentShader = shader.fragmentShader.replace(
                         '#include <dithering_fragment>',
                         `#include <dithering_fragment>
-                        // RGB split
-                        float rgbShift = uGlitchIntensity * 0.015;
-                        gl_FragColor.r = gl_FragColor.r + rgbShift * sin(uTime * 20.0 + gl_FragCoord.y * 0.1);
-                        gl_FragColor.b = gl_FragColor.b - rgbShift * cos(uTime * 15.0 + gl_FragCoord.y * 0.15);
+                        // RGB split — strong color separation
+                        float rgbShift = uGlitchIntensity * 0.04;
+                        gl_FragColor.r = gl_FragColor.r + rgbShift * sin(uTime * 25.0 + gl_FragCoord.y * 0.15);
+                        gl_FragColor.b = gl_FragColor.b - rgbShift * cos(uTime * 18.0 + gl_FragCoord.y * 0.2);
+                        gl_FragColor.g = gl_FragColor.g + rgbShift * 0.3 * sin(uTime * 30.0);
 
-                        // Scanlines
-                        float scanline = sin(gl_FragCoord.y * 1.5 + uTime * 5.0) * 0.03 * uGlitchIntensity;
+                        // Scanlines — visible bars
+                        float scanline = sin(gl_FragCoord.y * 2.0 + uTime * 8.0) * 0.06 * uGlitchIntensity;
                         gl_FragColor.rgb -= scanline;
 
-                        // Occasional flash
-                        float flash = step(0.995, fract(sin(uTime * 1.7) * 43758.5453)) * uGlitchIntensity * 0.15;
+                        // Occasional bright flash
+                        float flash = step(0.99, fract(sin(uTime * 2.3) * 43758.5453)) * uGlitchIntensity * 0.25;
                         gl_FragColor.rgb += flash;`
                     )
 
@@ -93,9 +94,9 @@ function FaceBackground() {
         groupRef.current.rotation.x = Math.sin(t * 0.2) * 0.05
         groupRef.current.position.y = 0.5 + Math.sin(t * 0.3) * 0.1
 
-        // Periodic glitch bursts (active ~20% of the time)
+        // Periodic glitch bursts (active ~40% of the time, stronger)
         const glitchCycle = Math.sin(t * 0.8) * Math.sin(t * 1.3)
-        const intensity = glitchCycle > 0.6 ? (glitchCycle - 0.6) * 2.5 : 0.0
+        const intensity = glitchCycle > 0.3 ? (glitchCycle - 0.3) * 3.0 : 0.0
 
         materialsRef.current.forEach((mat) => {
             if (mat.userData.shader) {
@@ -180,10 +181,9 @@ export default function About() {
 
                 <div className="reveal">
                     <div className="about-canvas">
-                        <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 1.5]}>
-                            <ambientLight intensity={0.5} />
+                        <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={1}>
+                            <ambientLight intensity={0.6} />
                             <directionalLight position={[3, 3, 5]} intensity={1.0} color="#ffffff" />
-                            <pointLight position={[-3, -2, 4]} intensity={0.4} color="#fabd2f" />
                             <Suspense fallback={<FaceFallback />}>
                                 <FaceBackground />
                             </Suspense>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ImageLoader from './ImageLoader'
 
 const GitHubIcon = () => (
     <svg viewBox="0 0 24 24" fill="currentColor">
@@ -23,8 +24,8 @@ const projects = [
         tags: ['Android', 'Kotlin', 'Linux', 'Shell'],
         github: 'https://github.com/abhay-byte/fluxlinux',
         live: 'https://f-droid.org/packages/com.ivarna.fluxlinux',
-        video: '/videos/fluxlinux.mp4',
-        screenshot: '/images/fluxlinux-screenshot.png'
+        video: null,
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/fluxlinux.gif'
     },
     {
         iconImg: '/images/finalbenchmark-icon.png',
@@ -34,7 +35,7 @@ const projects = [
         tags: ['Android', 'Kotlin', 'Performance'],
         github: 'https://github.com/abhay-byte/finalbenchmark-platform',
         live: 'https://f-droid.org/packages/com.ivarna.finalbenchmark2',
-        screenshot: '/images/finalbenchmark-screenshot.png'
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/FinalBenchmark2.gif'
     },
     {
         iconImg: '/images/deviceinsight-icon.webp',
@@ -44,7 +45,7 @@ const projects = [
         tags: ['Android', 'Kotlin', 'UI/UX'],
         github: 'https://github.com/abhay-byte/deviceinsight',
         live: null,
-        screenshot: '/images/deviceinsight-screenshot.png'
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/DeviceInsight.gif'
     },
     {
         iconImg: '/images/clinico-icon.png',
@@ -54,7 +55,7 @@ const projects = [
         tags: ['React', 'Node.js', 'AI', 'Full Stack'],
         github: 'https://github.com/abhay-byte/minor-project-gtbit',
         live: 'https://clinicofrontend.onrender.com/',
-        screenshot: '/images/clinico-screenshot.png'
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/clinico.gif'
     },
     {
         iconImg: '/images/mkm-icon.png',
@@ -64,7 +65,7 @@ const projects = [
         tags: ['Android', 'Kotlin', 'Kernel'],
         github: 'https://github.com/abhay-byte/mkm',
         live: null,
-        screenshot: '/images/mkm-screenshot.png'
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/MKM.gif'
     },
     {
         iconImg: '/images/fantasy-racing-icon.png',
@@ -74,8 +75,8 @@ const projects = [
         tags: ['Unity', 'C#', 'Game Dev'],
         github: 'https://github.com/abhay-byte/planet-racing',
         live: null,
-        video: '/1.mp4',
-        screenshot: '/images/fantasy-racing.png'
+        video: null,
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/fantasy-racing.gif'
     },
     {
         iconImg: '/images/xirsia-icon.png',
@@ -85,8 +86,8 @@ const projects = [
         tags: ['Unity', 'C#', 'RPG', 'Game Dev'],
         github: 'https://github.com/abhay-byte/Saiko-no-senshi-0.1v',
         live: 'https://hind-dev.web.app/#/',
-        video: '/videos/xirsia.mp4',
-        screenshot: null
+        video: null,
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/xirsia.gif'
     },
     {
         icon: '👻',
@@ -96,8 +97,8 @@ const projects = [
         tags: ['Unity', 'C#', 'Horror', 'Game Dev'],
         github: 'https://github.com/abhay-byte/valentines-day-unity',
         live: null,
-        video: '/videos/whispers1.mp4',
-        screenshot: null
+        video: null,
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/whispers.gif'
     },
     {
         iconImg: '/images/portfolio-icon.ico',
@@ -107,7 +108,7 @@ const projects = [
         tags: ['WebGL', 'Three.js', 'JavaScript'],
         github: 'https://github.com/abhay-byte/webgl-website',
         live: 'https://abhay-raj.web.app/',
-        screenshot: '/images/webgl-screenshot.png'
+        screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/webgl.gif'
     },
     {
         icon: '📈',
@@ -180,7 +181,7 @@ export default function Projects() {
                                         {project.video ? (
                                             <video src={project.video} autoPlay loop muted playsInline />
                                         ) : (
-                                            <img src={project.screenshot} alt={`${project.title} screenshot`} loading="lazy" />
+                                            <ImageLoader src={project.screenshot} alt={`${project.title} screenshot`} />
                                         )}
                                     </div>
                                 )}

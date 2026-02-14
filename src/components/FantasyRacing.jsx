@@ -2,6 +2,7 @@ import React, { useRef, useMemo } from 'react'
 import { Canvas, useFrame, extend } from '@react-three/fiber'
 import { useGLTF, shaderMaterial, OrbitControls, Environment, Float, Center } from '@react-three/drei'
 import * as THREE from 'three'
+import ImageLoader from './ImageLoader'
 
 /* ============ CAR SHADER (Reused) ============ */
 const CarMetallicMaterial = shaderMaterial(
@@ -147,7 +148,7 @@ export default function FantasyRacing() {
                     <div className="fr-gallery">
                         {screenshots.map((shot, i) => (
                             <div key={i} className="fr-gallery-item">
-                                <img src={shot.src} alt={shot.alt} loading="lazy" />
+                                <ImageLoader src={shot.src} alt={shot.alt} />
                             </div>
                         ))}
                     </div>

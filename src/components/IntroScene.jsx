@@ -2,6 +2,7 @@ import { useRef, useMemo, useEffect, useState, Suspense } from 'react'
 import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
 import { Stars, useGLTF, shaderMaterial, Float, useProgress } from '@react-three/drei'
 import * as THREE from 'three'
+import ImageLoader from './ImageLoader'
 
 /* ============ LOADING SCREEN ============ */
 function LoadingScreen() {
@@ -1291,9 +1292,9 @@ export default function IntroScene({ onComplete }) {
       text: 'From building 2D RPGs with massive open worlds to crafting futuristic racing experiences — I fell in love with creating digital worlds from scratch.',
       year: '2020–2023',
       projects: [
-        { iconImg: '/images/xirsia-icon.png', title: 'Story of Xirsia', video: '/videos/xirsia.mp4', screenshot: '/images/xirsia-screenshot.jpg', github: 'https://github.com/abhay-byte/Saiko-no-senshi-0.1v', live: 'https://hind-dev.web.app/#/', year: '2020' },
-        { iconImg: '/images/fantasy-racing-icon.png', title: 'Fantasy Racing', video: '/1.mp4', screenshot: '/images/fantasy-racing.png', github: 'https://github.com/abhay-byte/planet-racing', year: '2023' },
-        { icon: '👻', title: 'Whispers in the Mist', video: '/videos/whispers1.mp4', screenshot: '/images/whispers-in-mist-screenshot.jpg', github: 'https://github.com/abhay-byte/valentines-day-unity', year: '2023' },
+        { iconImg: '/images/xirsia-icon.png', title: 'Story of Xirsia', video: null, screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/xirsia.gif', github: 'https://github.com/abhay-byte/Saiko-no-senshi-0.1v', live: 'https://hind-dev.web.app/#/', year: '2020' },
+        { iconImg: '/images/fantasy-racing-icon.png', title: 'Fantasy Racing', video: null, screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/fantasy-racing.gif', github: 'https://github.com/abhay-byte/planet-racing', year: '2023' },
+        { icon: '👻', title: 'Whispers in the Mist', video: null, screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/whispers.gif', github: 'https://github.com/abhay-byte/valentines-day-unity', year: '2023' },
       ]
     },
     {
@@ -1302,10 +1303,10 @@ export default function IntroScene({ onComplete }) {
       year: '2025–2026',
       projects: [
         { iconImg: '/images/clinico-icon.png', title: 'Clinico Flutter', screenshot: '/images/clinico-app-screenshot.png', github: 'https://github.com/abhay-byte/clinico-flutter', year: 'Nov 2025' },
-        { iconImg: '/images/finalbenchmark-icon.png', title: 'FinalBenchmark 2', screenshot: '/images/finalbenchmark-screenshot.png', github: 'https://github.com/abhay-byte/finalbenchmark-platform', live: 'https://f-droid.org/packages/com.ivarna.finalbenchmark2', year: 'Nov 2025' },
-        { iconImg: '/images/fluxlinux-icon.webp', title: 'FluxLinux', video: '/videos/fluxlinux.mp4', screenshot: '/images/fluxlinux-screenshot.png', github: 'https://github.com/abhay-byte/fluxlinux', live: 'https://f-droid.org/packages/com.ivarna.fluxlinux', year: 'Dec 2025' },
-        { iconImg: '/images/deviceinsight-icon.webp', title: 'DeviceInsight', screenshot: '/images/deviceinsight-screenshot.png', github: 'https://github.com/abhay-byte/deviceinsight', year: 'Dec 2025' },
-        { iconImg: '/images/mkm-icon.png', title: 'MKM', screenshot: '/images/mkm-screenshot.png', github: 'https://github.com/abhay-byte/mkm', year: 'Jan 2026' },
+        { iconImg: '/images/finalbenchmark-icon.png', title: 'FinalBenchmark 2', screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/FinalBenchmark2.gif', github: 'https://github.com/abhay-byte/finalbenchmark-platform', live: 'https://f-droid.org/packages/com.ivarna.finalbenchmark2', year: 'Nov 2025' },
+        { iconImg: '/images/fluxlinux-icon.webp', title: 'FluxLinux', video: null, screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/fluxlinux.gif', github: 'https://github.com/abhay-byte/fluxlinux', live: 'https://f-droid.org/packages/com.ivarna.fluxlinux', year: 'Dec 2025' },
+        { iconImg: '/images/deviceinsight-icon.webp', title: 'DeviceInsight', screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/DeviceInsight.gif', github: 'https://github.com/abhay-byte/deviceinsight', year: 'Dec 2025' },
+        { iconImg: '/images/mkm-icon.png', title: 'MKM', screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/MKM.gif', github: 'https://github.com/abhay-byte/mkm', year: 'Jan 2026' },
       ]
     },
     {
@@ -1314,7 +1315,7 @@ export default function IntroScene({ onComplete }) {
       year: '2025–Present',
       projects: [
         { icon: '📈', title: 'Investment Growth', screenshot: '/images/investment-growth-screenshot.png', github: 'https://github.com/abhay-byte/AI_WRAPPER_PROJECTS', live: 'https://aiwrapper.streamlit.app', year: 'Mar 2025' },
-        { iconImg: '/images/clinico-icon.png', title: 'Clinico', screenshot: '/images/clinico-screenshot.png', github: 'https://github.com/abhay-byte/minor-project-gtbit', live: 'https://clinicofrontend.onrender.com/', year: 'Sep 2025' },
+        { iconImg: '/images/clinico-icon.png', title: 'Clinico', screenshot: 'https://raw.githubusercontent.com/abhay-byte/abhay-byte/refs/heads/main/assets/clinico.gif', github: 'https://github.com/abhay-byte/minor-project-gtbit', live: 'https://clinicofrontend.onrender.com/', year: 'Sep 2025' },
       ]
     },
     {
@@ -1402,7 +1403,7 @@ export default function IntroScene({ onComplete }) {
                           {proj.video ? (
                             <video src={proj.video} autoPlay loop muted playsInline />
                           ) : (
-                            <img src={proj.screenshot} alt={proj.title} loading="lazy" />
+                            <ImageLoader src={proj.screenshot} alt={proj.title} />
                           )}
                         </div>
                       )}

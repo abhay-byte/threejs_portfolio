@@ -6,7 +6,7 @@ export default function ImageLoader({ src, alt, className, style, ...props }) {
     return (
         <div
             className={`image-loader-container ${className || ''}`}
-            style={{ position: 'relative', overflow: 'hidden', ...style }}
+            style={{ position: 'relative', overflow: 'hidden', width: '100%', height: '100%', ...style }}
             {...props}
         >
             {!loaded && (

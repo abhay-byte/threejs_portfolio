@@ -4,6 +4,7 @@ import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import About from './components/About'
 import Projects from './components/Projects'
+import FantasyRacing from './components/FantasyRacing'
 import Contact from './components/Contact'
 import './index.css'
 
@@ -18,6 +19,7 @@ export default function App() {
         <Hero />
         <About />
         <Projects />
+        <FantasyRacing />
         <Contact />
       </main>
       <footer className="footer">

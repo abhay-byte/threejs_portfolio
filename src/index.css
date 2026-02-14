@@ -1190,3 +1190,82 @@ main {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ========== FANTASY RACING SECTION ========== */
+.fr-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 60px;
+  margin-top: 40px;
+}
+
+@media (min-width: 900px) {
+  .fr-content {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.fr-description h3 {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.fr-description p {
+  margin-bottom: 20px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.fr-model-container {
+  margin-top: 40px;
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.fr-model-container .caption {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: 0;
+}
+
+.fr-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.fr-gallery-item {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s ease, border-color 0.3s ease;
+  cursor: pointer;
+}
+
+.fr-gallery-item:hover {
+  transform: scale(1.02);
+  border-color: var(--accent);
+  z-index: 2;
+}
+
+.fr-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.fr-gallery-item:hover img {
+  transform: scale(1.1);
+}

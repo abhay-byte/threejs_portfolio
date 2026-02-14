@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import ContactCanvas from './ContactCanvas'
 
 const EmailIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -31,52 +32,78 @@ const GitHubIcon = () => (
 
 export default function Contact() {
     const sectionRef = useRef()
+    const [isVisible, setIsVisible] = useState(false)
 
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(e => {
-                    if (e.isIntersecting) e.target.classList.add('visible')
+                    if (e.target === sectionRef.current) {
+                        setIsVisible(e.isIntersecting)
+                    }
+                    if (e.target.classList.contains('reveal')) {
+                        if (e.isIntersecting) {
+                            e.target.classList.add('visible')
+                        } else {
+                            e.target.classList.remove('visible')
+                        }
+                    }
                 })
             },
-            { threshold: 0.15 }
+            { threshold: 0.2 }
         )
+        if (sectionRef.current) observer.observe(sectionRef.current)
         const reveals = sectionRef.current?.querySelectorAll('.reveal')
         reveals?.forEach(el => observer.observe(el))
-        return () => reveals?.forEach(el => observer.unobserve(el))
+        return () => observer.disconnect()
     }, [])
 
     return (
-        <section className="section" id="contact" ref={sectionRef}>
-            <div className="section-header reveal" style={{ textAlign: 'center' }}>
-                <p className="section-label">Contact</p>
-                <h2 className="section-title">Let&apos;s Connect</h2>
-                <div className="section-divider" style={{ margin: '20px auto 0' }} />
+        <section id="contact" ref={sectionRef} style={{ position: 'relative', width: '100%', minHeight: '100vh', overflow: 'hidden' }}>
+            <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                opacity: isVisible ? 1 : 0,
+                transition: 'opacity 1.5s ease-in-out',
+                zIndex: 0
+            }}>
+                <ContactCanvas />
             </div>
 
-            <div className="contact-wrapper reveal">
-                <p>
-                    I&apos;m always open to discussing open source projects, creative ideas,
-                    or opportunities to contribute to something meaningful. Feel free to reach out!
-                </p>
+            <div className="section" style={{ position: 'relative', zIndex: 2, minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div className="section-header reveal" style={{ textAlign: 'center' }}>
+                    <p className="section-label">Contact</p>
+                    <h2 className="section-title">Let&apos;s Connect</h2>
+                    <div className="section-divider" style={{ margin: '20px auto 0' }} />
+                </div>
 
-                <div className="contact-links">
-                    <a href="mailto:abhay.byte02@gmail.com" className="contact-card">
-                        <EmailIcon />
-                        <span>abhay.byte02@gmail.com</span>
-                    </a>
-                    <a href="https://www.linkedin.com/in/abhay-byte/" className="contact-card" target="_blank" rel="noopener noreferrer">
-                        <LinkedInIcon />
-                        <span>Abhay Raj</span>
-                    </a>
-                    <a href="https://github.com/abhay-byte" className="contact-card" target="_blank" rel="noopener noreferrer">
-                        <GitHubIcon />
-                        <span>abhay-byte</span>
-                    </a>
-                    <a href="https://github.com/abhay-byte/my-resume/releases/latest" className="contact-card" target="_blank" rel="noopener noreferrer">
-                        <ResumeIcon />
-                        <span>Download Resume</span>
-                    </a>
+                <div className="contact-wrapper reveal">
+                    <p>
+                        I&apos;m always open to discussing open source projects, creative ideas,
+                        or opportunities to contribute to something meaningful. Feel free to reach out!
+                    </p>
+
+                    <div className="contact-links">
+                        <a href="mailto:abhay.byte02@gmail.com" className="contact-card">
+                            <EmailIcon />
+                            <span>abhay.byte02@gmail.com</span>
+                        </a>
+                        <a href="https://www.linkedin.com/in/abhay-byte/" className="contact-card" target="_blank" rel="noopener noreferrer">
+                            <LinkedInIcon />
+                            <span>Abhay Raj</span>
+                        </a>
+                        <a href="https://github.com/abhay-byte" className="contact-card" target="_blank" rel="noopener noreferrer">
+                            <GitHubIcon />
+                            <span>abhay-byte</span>
+                        </a>
+                        <a href="https://github.com/abhay-byte/my-resume/releases/latest" className="contact-card" target="_blank" rel="noopener noreferrer">
+                            <ResumeIcon />
+                            <span>Download Resume</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </section>

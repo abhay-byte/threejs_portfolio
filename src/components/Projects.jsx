@@ -67,7 +67,7 @@ const projects = [
         screenshot: '/images/mkm-screenshot.png'
     },
     {
-        icon: '🏎️',
+        iconImg: '/images/fantasy-racing-icon.png',
         iconBg: 'linear-gradient(135deg, #f093fb, #f5576c)',
         title: 'Fantasy Racing',
         description: 'High-speed futuristic racing game with diverse planets, strategic challenges, and immersive gameplay built in Unity.',
@@ -78,7 +78,7 @@ const projects = [
         screenshot: '/images/fantasy-racing.png'
     },
     {
-        icon: '⚔️',
+        iconImg: '/images/xirsia-icon.png',
         iconBg: 'linear-gradient(135deg, #a8edea, #fed6e3)',
         title: 'Story of Xirsia',
         description: '2D Role Playing Game set in the Medieval age with a massive 25km² open world of Xirsia Isle to explore.',
@@ -117,7 +117,7 @@ const projects = [
         tags: ['Python', 'Streamlit', 'AI'],
         github: 'https://github.com/abhay-byte/AI_WRAPPER_PROJECTS',
         live: 'https://aiwrapper.streamlit.app',
-        screenshot: null
+        screenshot: '/images/investment-growth-screenshot.png'
     }
 ]
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo, Suspense } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useGLTF } from '@react-three/drei'
+import { useGLTF, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 
 const skills = [
@@ -90,9 +90,9 @@ function FaceBackground() {
         if (!groupRef.current) return
         const t = state.clock.elapsedTime
 
-        groupRef.current.rotation.y += 0.003
-        groupRef.current.rotation.x = Math.sin(t * 0.2) * 0.05
-        groupRef.current.position.y = Math.sin(t * 0.3) * 0.05
+        // Note: Y-rotation is now handled by OrbitControls autoRotate
+        groupRef.current.rotation.x = Math.sin(t * 0.2) * 0.05 // Subtle nod
+        groupRef.current.position.y = Math.sin(t * 0.3) * 0.05 // Float
 
         // Periodic glitch bursts (high frequency, nearly always active)
         const glitchCycle = Math.sin(t * 2.5) * Math.sin(t * 3.7)
@@ -198,6 +198,16 @@ export default function About() {
                             <Suspense fallback={<FaceFallback />}>
                                 <FaceBackground />
                             </Suspense>
+                            <OrbitControls
+                                enableZoom={false}
+                                enablePan={false}
+                                autoRotate
+                                autoRotateSpeed={2.0}
+                                enableDamping
+                                dampingFactor={0.05}
+                                minPolarAngle={Math.PI / 2}
+                                maxPolarAngle={Math.PI / 2}
+                            />
                         </Canvas>
                     </div>
                 </div>
